@@ -1,0 +1,27 @@
+/*primary colors*/
+/*font families*/
+/*BOXED LAYOUT*/
+/*GRID - media queries breakpoints*/
+.scpolicymain {
+  padding-top: 200px;
+  padding-bottom: 160px;
+  min-height: 105vh; }
+  .scpolicymain__head {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 20px;
+    margin-bottom: 20px; }
+    .scpolicymain__head .date {
+      font-family: im;
+      margin-top: 20px; }
+  .scpolicymain .bgblurblog {
+    top: -50%; }
+    .scpolicymain .bgblurblog img {
+      max-width: 1800px; }
+  @media screen and (max-width: 991px) {
+    .scpolicymain {
+      padding-top: var(--ptop);
+      padding-bottom: var(--pd-section); }
+      .scpolicymain .bgblurblog {
+        top: -200px; }
+        .scpolicymain .bgblurblog img {
+          max-width: 1800px; } }
