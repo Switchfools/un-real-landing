@@ -228,7 +228,7 @@ body {
   font-size: var(--body16-fs);
   font-family: ir;
   line-height: var(--body16-lh);
-  color: #938ca7;
+  color: #FFF7EB;
   text-transform: none;
   background: #1E2832; }
   body::-webkit-scrollbar {
