@@ -398,7 +398,7 @@ sub {
     height: var(--height-button);
     padding: 17px 34px;
     overflow: hidden;
-    color: #FFF7EB;
+    color: #ffffff;
     font-size: var(--body14-fs);
     font-family: im;
     line-height: initial;
@@ -611,6 +611,7 @@ sub {
     -o-transition: 0.3s; }
   .btnlink::before {
     background: url(img/arrowright-white.svg) no-repeat center;
+    color: #FE9501;
     z-index: 2;
     right: 0px;
     position: absolute;
@@ -622,6 +623,7 @@ sub {
     opacity: 0; }
   .btnlink::after {
     background: url(img/arrowright.svg) no-repeat center;
+    color: #FE9501;
     z-index: 1;
     opacity: 1; }
   .btnlink.--regular {
@@ -692,7 +694,8 @@ sub {
   .label.--purple {
     background: #11A1BB; }
   .label.--blue {
-    background: #FE9501; }
+    background: #FE9501; 
+    color: #1E2832;}
   .label.--green {
     background: #1fb881; }
   .label.--yellow {
