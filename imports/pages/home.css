@@ -6,8 +6,8 @@
   padding-top: var(--ptop);
   background: #1E2832;
   --sizeEarth: 580px; 
-  margin-bottom: 30px;
-  margin-top: 30px;
+  margin-bottom: 45px;
+  margin-top: 70px;
 }
   .schero__wrap {
     display: grid;
@@ -16,7 +16,7 @@
     align-self: center;
     margin-top: -20px; }
     .schero__content-heading {
-      max-width: 500px; }
+      max-width: 550px; }
     .schero__content-text {
       max-width: 440px;
       margin: 20px 0 30px 0; }
@@ -500,3 +500,8 @@
           -moz-transform: translateX(-50%);
           -ms-transform: translateX(-50%);
           -o-transform: translateX(-50%); } }
+
+  .projects__btn {
+    margin-top: 5px;
+    text-align: center; 
+  }
