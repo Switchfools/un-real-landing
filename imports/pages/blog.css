@@ -539,7 +539,7 @@
   position: absolute; }
 
 .itemblog {
-  background: rgba(17, 161, 187, 0.1);
+  background: rgba(17, 161, 187, 0.3);
   border-radius: 10px;
   transition: background 0.3s;
   -webkit-transition: background 0.3s;
@@ -563,7 +563,7 @@
       font-size: var(--h3-fs);
       line-height: var(--h3-lh); }
   .itemblog:hover {
-    background: rgba(17, 161, 187, 0.2);
+    background: rgba(17, 161, 187, 0.4);
     transition: background 0.3s;
     -webkit-transition: background 0.3s;
     -moz-transition: background 0.3s;
