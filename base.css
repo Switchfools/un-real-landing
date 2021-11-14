@@ -703,7 +703,7 @@ sub {
   font-size: var(--h1-fs);
   line-height: var(--h1-lh);
   display: block;
-  background: linear-gradient(0deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2)), linear-gradient(98.94deg, #FE9501 0.87%, #11A1BB 57.85%);
+  background: linear-gradient(0deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2)), linear-gradient(98.94deg, #11A1BB  30%, #FE9501 80%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent; }
 
