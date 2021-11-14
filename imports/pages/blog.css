@@ -333,9 +333,10 @@
       -o-transition: 0.3s; }
       .scmainblog__featured-item .imgblog {
         margin-bottom: 24px;
-        display: none; }
+        display: none;
+      }
       .scmainblog__featured-item .hashtag {
-        display: none; }
+        display: block; }
       .scmainblog__featured-item:first-child {
         grid-row: 1/3; }
       .scmainblog__featured-item:hover {
