@@ -428,14 +428,14 @@ sub {
       -ms-transition: 0.3s;
       -o-transition: 0.3s; }
   .btn.--line {
-    border: 1px solid rgba(129, 75, 246, 0.3);
+    border: 1px solid rgba(254, 149, 1, 0.3);
     height: var(--height-button); }
   .btn.--outline {
-    border: 1px solid rgba(129, 75, 246, 0.3);
+    border: 1px solid rgba(254, 149, 1, 0.3);
     background: none;
     height: var(--height-button); }
     .btn.--outline:hover {
-      background: rgba(129, 75, 246, 0.1);
+      background: rgba(254, 149, 1, 0.1);
       box-shadow: none; }
   .btn.--small {
     border-radius: 4px;
@@ -556,8 +556,8 @@ sub {
       -ms-transition: 0.3s;
       -o-transition: 0.3s; }
   .btn:hover {
-    background: #6535cf;
-    box-shadow: 0px 5px 15px rgba(128, 0, 255, 0.3);
+    background: #FE9501;
+    box-shadow: 0px 5px 15px rgba(254, 149, 1, 0.3);
     transition: 0.3s;
     -webkit-transition: 0.3s;
     -moz-transition: 0.3s;

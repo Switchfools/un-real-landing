@@ -65,7 +65,7 @@ html.has-scroll-dragging {
   position: absolute;
   top: 0;
   right: 0;
-  background-color: #814bf6;
+  background-color: #11A1BB;
   opacity: 0.6;
   width: 5px;
   border-radius: 15px;
@@ -719,3 +719,10 @@ button.swiper-pagination-bullet {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   overflow: hidden; }
+
+  .shape_background {
+    transform-origin: center !important;
+    width: 70px !important;
+    height: 70px !important;
+    background: #FE9501 !important;
+  }
