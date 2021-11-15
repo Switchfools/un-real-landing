@@ -224,7 +224,9 @@
     .header__nav, .header__login, .header__divide {
       display: none; }
     .header__btnmenu {
-      display: block; }
+      display: block; 
+      color: #FFF7EB;
+    }
     .header.--hide {
       transform: translateY(-100%);
       -webkit-transform: translateY(-100%);
