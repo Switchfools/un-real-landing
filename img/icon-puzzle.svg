@@ -1,0 +1,10 @@
+<svg version="1.2" baseProfile="tiny-ps" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+	<title>baseline_extension_black_24dp</title>
+	<defs>
+		<image  width="42" height="42" id="img1" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACoAAAAqAQMAAAD/DVsYAAAAAXNSR0IB2cksfwAAAAZQTFRFAAAAHigyJlXInwAAAAJ0Uk5TAP9bkSK1AAAATElEQVR4nGNgYP7AAALsP8AU/x8iqfr///83MDAAyf8HqEWxg2gGBub/YLMZCeuAKoFqgGrHq+2fPJj6ww+mfrCDqQ/MOKl6INXAAAAgWp25xE6zIgAAAABJRU5ErkJggg=="/>
+	</defs>
+	<style>
+		tspan { white-space:pre }
+	</style>
+	<use id="Background" href="#img1" x="4" y="2" />
+</svg>
