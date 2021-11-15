@@ -472,6 +472,7 @@
       .footer__right-top .colnav {
         font-size: var(--body14-fs);
         line-height: var(--body14-lh);
+        width: 40%;
         position: right !important;
          }
         .footer__right-top .colnav .title {
