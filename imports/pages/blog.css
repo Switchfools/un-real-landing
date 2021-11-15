@@ -227,7 +227,7 @@
         -webkit-box-orient: vertical;
         text-overflow: ellipsis;
         overflow: hidden;
-        height: 60px;
+        height: 100px;
         transition: 0.3s;
         -webkit-transition: 0.3s;
         -moz-transition: 0.3s;
