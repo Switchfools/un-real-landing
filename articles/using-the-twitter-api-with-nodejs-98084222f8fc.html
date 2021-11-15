@@ -109,15 +109,13 @@
             <a class="current" href="using-the-twitter-api-with-nodejs-98084222f8fc.html#">Buildings</a>
             </li>
         </ul>
-        <h2 class="heading --h2">
-        Using the Twitter API with NodeJS</h2>
+        <h2 class="heading --h2">Reducing risk during earthquakes </h2>
         <div class="scheaddetail__info">
         <div class="scheaddetail__info-item">
         <i>
         <img src="img/icontime.svg" alt="" draggable="false" loading="lazy">
         </i>
-        <b>
-        05.11.2021</b>
+        <b>We have developed a safer AI controller to increase building safeness during earthquakes. This controller reduces the expected damage by 66%. Our AI controller also presents data efficiency as it requires only 4 seconds of seismic data for tuning the controller, leading to significant risk reduction in multiple seismic scenarios.</b>
         </div>
         </div>
     </div>
@@ -130,129 +128,16 @@
     <div class="scdetail__inner">
     <div class="scdetail__content">
     <div class="scdetail__content-inner contentdetail" id="fixed-share">
+    <p class=article-text>Humans have continuously developed civil structures from ancient times to supply their own needs. Today some buildings, called active structures, present advantages increasing the structure's safeness by reducing the risk of collapse during an earthquake. These structures contain sensors and actuators that modify the building's response to its environment. These actuators, like active dampers or active tendons, apply forces to adjust the structure's shape. Nonetheless, how to optimally control these dampers still being an open question.</p>
     <p class=article-text>
-    There was a <a href=https://www.pewresearch.org/internet/2018/04/09/bots-in-the-twittersphere/ target="_blank" rel="noopener">
-    study</a>
-    done by Pew Research a number of years ago that found that ⅔ of all tweets with links to popular websites. To the average Twitter user that probably doesn’t come as a surprise.</p>
-    <p class=article-text>
-    Twitter is incredibly easy to automate, in fact, today I’m going to show you just how easy it is to use the Twitter API with NodeJS to read, search, and post tweets.</p>
-    <h2 class=article-subtitle-body>
-    Setup Your Twitter Dev Account</h2>
-    <p class=article-text>
-    Because of the sheer volume of Twitter bots, Twitter requires an application before you can use their API. While you can start using your API key as soon as you submit the application, some features might be restricted until it is reviewed.</p>
-    <p class=article-text>
-    Apply here:</p>
-    <p class=article-text>
-    <a href=https://developer.twitter.com/en/apply-for-access target="_blank" rel="noopener">
-    https://developer.twitter.com/en/apply-for-access</a>
-    </p>
-    <p class=article-text>
-    Once your application is complete, navigate to your developer dashboard and create a new application. Once, you generate your application, go to settings and make sure to turn on Read and Write Permissions:</p>
-    <img class="article-image-body" src=https://miro.medium.com/max/1600/0*gkAe2dq8B3CCPZyW>
-    <p class=article-text>
-    Next, head to the keys menu, and generate and copy your API and Access tokens. We’ll use them to authenticate next.</p>
-    <h2 class=article-subtitle-body>
-    Setting Up Our Script</h2>
-    <p class=article-text>
-    Since we’re going to be using NodeJS to work with the Twitter API, create a new NPM project with:</p>
+        In this area, the vast majority of the developed algorithms are based on analytical models, as PIDs, that predict the action to reduce structure's damage. However, these strategies are obsolete. The high complexity of nonlinear systems and the probabilistic behavior of the environment are intractable for humans. Applying this methodology to real structures is even more intricate because buildings change over time. Therefore, Machine Learning could perform a fundamental role in risk reduction for buildings.</p>
+    <h2 class=article-subtitle-body>Our Solution</h2>
     <p class=article-text>
     <code>
     npm init</code>
     </p>
-    <p class=article-text>
-    And go through the standard questions. Next, we are going to install a great wrapper for the Twitter Developer API. While this isn’t necessary, it will make authentication much cleaner.</p>
-    <p class=article-text>
-    <code>
-    npm install twitter-api-v2</code>
-    </p>
-    <p class=article-text>
-    Once that’s done, we can create and authenticate our client like so:</p>
-    <p class=article-text>
-    And of course, fill in the relevant API keys and tokens for your app.</p>
-    <h2 class=article-subtitle-body>
-    Pulling and Posting Tweets</h2>
-    <p class=article-text>
-    Now let’s showcase some of the API calls you can make.</p>
-    <p class=article-text>
-    To get data about a tweet from its ID:</p>
-    <p class=article-text>
-    In the <code>
-    tweet.fields </code>
-    you can put all the specific data you want. To get a full list of all the parameters you can use:</p>
-    <p class=article-text>
-    <a href=https://developer.twitter.com/en/docs/api-reference-index target="_blank" rel="noopener">
-    https://developer.twitter.com/en/docs/api-reference-index</a>
-    </p>
-    <p class=article-text>
-    To tweet something out programmatically:</p>
-    <p class=article-text>
-    And there you go!</p>
-    <img class="article-image-body" src=https://miro.medium.com/max/1600/0*n0ySvGp88GKvLP3R>
-    <h2 class=article-subtitle-body>
-    Use Cases</h2>
-    <p class=article-text>
-    Virtually anything that you might do normally on Twitter can be done through the API. That means that any automation you might want to do is completely possible. This includes:</p>
-    <ul>
-    <li>
-    Automated Run Accounts</li>
-
-    <li>
-    Automatically retweet certain articles based on hashtags (Aggregation accounts)</li>
-
-    <li>
-    Track trendings topics for algorithmic trading</li>
-
-    <li>
-    Sentiment Analysis on tweets</li>
-
-    <li>
-    Data analysis for your company’s Twitter campaigns</li>
-    </ul>
-    <p class=article-text>
-    So what are you going to build? Let us know down below!</p>
-    <p class=article-text>
-    If you’re looking for a place to host your Twitter bot, try coding, debugging, and deploying on <a href="../../link.codesphere.com/FH.html" target="_blank" rel="noopener">
-    Codesphere</a>
-    , the most intuitive cloud provider on the market</p>
-    </div>
-    <div class="scdetail__content-share" data-scroll="" data-scroll-sticky="" data-scroll-target="#fixed-share" data-scroll-offset="-80">
-    <p class="title">
-    SHARE</p>
-    <ul>
-    <li>
-    <div class="tooltip">
-    Share on Twitter</div>
-    <a href="http://twitter.com/share?text=Using the Twitter API with NodeJS&amp;url=https://codesphere.com/articles/using-the-twitter-api-with-nodejs-98084222f8fc&amp;hashtags=codesphere">
-    <img src="img/icontwitter.svg" alt="" draggable="false" loading="lazy">
-    </a>
-    </li>
-    <li>
-    <div class="tooltip">
-    Share on Facebook</div>
-    <a href="https://www.facebook.com/sharer.php?u=https://codesphere.com/articles/using-the-twitter-api-with-nodejs-98084222f8fc">
-    <img src="img/iconfacebook.svg" alt="" draggable="false" loading="lazy">
-    </a>
-    </li>
-    <li>
-    <div class="tooltip">
-    Share on LinkedIn</div>
-    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://codesphere.com/articles/using-the-twitter-api-with-nodejs-98084222f8fc">
-    <img src="img/iconin.svg" alt="" draggable="false" loading="lazy">
-    </a>
-    </li>
-    <li>
-    <div class="tooltip">
-    Copy the link</div>
-    <a class="clipboard" href="using-the-twitter-api-with-nodejs-98084222f8fc.html#">
-    <img src="img/iconcopylink.svg" alt="" draggable="false" loading="lazy">
-    </a>
-    </li>
-    </ul>
-    </div>
-    </div>
     <div class="scdetail__relate">
-    <h4 class="scdetail__relate-heading heading --h4">
-    More</h4>
+    <h4 class="scdetail__relate-heading heading --h4">More</h4>
     <div class="scdetail__relate-list">
     <div class="scdetail__relate-item">
     <div class="imgblog">
