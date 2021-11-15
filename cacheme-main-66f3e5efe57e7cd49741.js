@@ -251,7 +251,7 @@
                             bubbles_color: "#FE9501",
                             stroke_width: 0,
                             stroke_color: "black"
-                        }, o.bubbles_number = 20, o.speed = [1500, 1e4], o.max_bubbles_height = o.height, o.shape = !1, e("#" + o.id).length > 0 && e("#" + o.id).remove(), o.object = e(`<div style='z - inde: -1; margin: 0; padding: 0; overflow: hidden; position: absolute;\n                bottom: 0' id='${this.id}'> </div>`).appendTo(t), o.ww = e(window).width(), o.wh = e(window).height(), o.width = o.object.width(o.ww), o.height = o.object.height(o.wh), e("body").prepend("<style>.shape_background {transform-origin:center; width:70px; height:70px; background: " + o.style.bubbles_color + "; position: absolute}</style>");
+                        }, o.bubbles_number = 20, o.speed = [1500, 1e4], o.max_bubbles_height = o.height, o.shape = !1, e("#" + o.id).length > 0 && e("#" + o.id).remove(), o.object = e(`<div style='z - inde: -1; margin: 0; padding: 0; overflow: hidden; position: absolute;\n                bottom: 0' id='${this.id}'> </div>`).appendTo(t), o.ww = e(window).width(), o.wh = e(window).height(), o.width = o.object.width(o.ww), o.height = o.object.height(o.wh), e("body").prepend("<style>.shape_background {border-radius: 50%; transform-origin:center; width:70px; height:70px; background: " + o.style.bubbles_color + "; position: absolute;}</style>");
                         for (let e = 0; e < o.bubbles_number; e++) o.generateBubbles()
                     },
                     generateBubbles: function() {
@@ -262,12 +262,7 @@
                         i = 1 === n ? o.css({
                             borderRadius: "50%"
                         }) : 2 === n ? o.css({
-                            width: 0,
-                            height: 0,
-                            "border-style": "solid",
-                            "border-width": "0 40px 69.3px 40px",
-                            "border-color": "transparent transparent " + t.style.bubbles_color + " transparent",
-                            background: "transparent"
+                            borderRadius: "50%"
                         }) : o;
                         const r = t.rn(.8, 1.2);
                         i.css({
