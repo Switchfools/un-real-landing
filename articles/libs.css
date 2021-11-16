@@ -65,7 +65,7 @@ html.has-scroll-dragging {
   position: absolute;
   top: 0;
   right: 0;
-  background-color: #814bf6;
+  background-color: #11A1BB;
   opacity: 0.6;
   width: 5px;
   border-radius: 15px;
@@ -126,7 +126,7 @@ html.has-scroll-dragging {
     margin: 0 5px;
     cursor: pointer; }
     .flickity-page-dots .dot.is-selected {
-      background: #814bf6; }
+      background: #11A1BB; }
 
 /* flickity-fade */
 .flickity-enabled.is-fade .flickity-slider > * {
