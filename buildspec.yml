@@ -1,20 +1,14 @@
-version: 0.2
-phases:
- install:
-   commands:
-     - echo "install step"
-     - sudo apt-get install apache2
-     - sudo apt-get install git
- pre_build:
-   commands:
-     - echo "pre_build step"
-     - sudo service apache2 start
-     - cd /var/www/html
-     - sudo git clone https://github.com/Switchfools/un-real-landing.git .
- build:
-   commands:
-     - cd /var/www/html
-     - sudo git pull
- post_build:
-   commands:
-     - echo "post_build step"
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /var/www/html/
+hooks:
+  BeforeInstall:
+    - location: ec2_scripts/set_up
+      timeout: 300
+      runas: sudo
+  AfterInstall:
+    - location: ec2_scripts/run
+      timeout: 300
+      runas: sudo
