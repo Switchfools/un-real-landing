@@ -7,12 +7,12 @@ hooks:
   BeforeInstall:
     - location: ec2_scripts/set_up
       timeout: 300
-      runas: sudo
+      runas: root
   AfterInstall:
     - location: ec2_scripts/run
       timeout: 300
-      runas: sudo
+      runas: root
   ApplicationStop:
     - location: scripts/stop_server
       timeout: 60
-      runas: sudo
+      runas: root

@@ -1,2 +1,2 @@
-echo "starting server"
-service apache2 stop
+sudo echo "starting server"
+sudo service apache2 stop
