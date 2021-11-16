@@ -12,3 +12,7 @@ hooks:
     - location: ec2_scripts/run
       timeout: 300
       runas: sudo
+  ApplicationStop:
+    - location: scripts/stop_server
+      timeout: 60
+      runas: sudo
