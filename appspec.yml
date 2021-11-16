@@ -1,5 +1,18 @@
 version: 0.0
 os: linux
 files:
-  - source: ./index.html
-    destination: /
+  - source: ./*
+    destination: /var/www/html/
+hooks:
+  BeforeInstall:
+    - location: ec2_scripts/set_up
+      timeout: 300
+      runas: sudo
+  AfterInstall:
+    - location: ec2_scripts/run
+      timeout: 300
+      runas: sudo
+  ApplicationStop:
+    - location: scripts/stop_server
+      timeout: 60
+      runas: sudo
