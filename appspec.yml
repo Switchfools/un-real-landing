@@ -1,18 +1,18 @@
 version: 0.0
 os: linux
 files:
-  - source: /
+  - source: ./
     destination: ~/var/www/html/
 hooks:
   BeforeInstall:
-    - location: ec2_scripts/set_up
+    - location: ./ec2_scripts/set_up
       timeout: 300
       runas: root
   AfterInstall:
-    - location: ec2_scripts/run
+    - location: ./ec2_scripts/run
       timeout: 300
       runas: root
   ApplicationStop:
-    - location: scripts/stop_server
+    - location: ./scripts/stop_server
       timeout: 60
       runas: root
