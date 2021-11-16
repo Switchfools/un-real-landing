@@ -3,4 +3,4 @@ apt-get install apache2
 apt-get install git
 update-rc.d apache2 defaults
 cd /var/www/html
-rm index.html
+rm -r *
