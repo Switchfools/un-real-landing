@@ -3,6 +3,9 @@ os: linux
 files:
   - source: ./
     destination: /var/www/html/
+artifacts:
+  files:
+    - appspec.yml
 hooks:
   BeforeInstall:
     - location: ./ec2_scripts/set_up
