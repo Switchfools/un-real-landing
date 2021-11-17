@@ -1,1 +1,1 @@
-sudo service httpd stop
+sudo service apache2 stop

@@ -1,5 +1,4 @@
 echo "install step"
-sudo yum update -y
-sudo yum install httpd -y
-sudo service httpd start
-sudo chkconfig httpd on
+sudo apt-get install apache2
+sudo apt-get install git
+sudo update-rc.d apache2 defaults

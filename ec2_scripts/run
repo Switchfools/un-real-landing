@@ -1,2 +1,2 @@
 echo "starting server"
-sudo service httpd start
+sudo service apache2 start
