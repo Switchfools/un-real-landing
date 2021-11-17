@@ -1,6 +1,5 @@
 echo "install step"
-sudo apt-get install apache2
-sudo apt-get install git
-sudo update-rc.d apache2 defaults
-sudo cd ~/var/www/html
-sudo rm -r *
+sudo yum update -y
+sudo yum install httpd -y
+sudo service httpd start
+sudo chkconfig httpd on
