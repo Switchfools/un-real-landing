@@ -2,4 +2,5 @@ echo "install step"
 sudo apt-get install apache2
 sudo apt-get install git
 sudo update-rc.d apache2 defaults
-sudo rm -r /var/www/html/*
+sudo rm -r /var/www/html
+sudo mkdir /var/www/html
