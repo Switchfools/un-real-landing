@@ -450,7 +450,8 @@
           line-height: var(--body14-lh); } }
 
 .scteamcompany {
-  padding-bottom: var(--pd-section);
+  background: linear-gradient(#1f2832,#014b62);
+  padding-bottom: 40px;
   z-index: 20; }
   .scteamcompany .textbox {
     max-width: 690px;
@@ -488,9 +489,9 @@
 
 .scinvescompany {
   padding-top: var(--pd-section);
-  padding-bottom: 210px;
-  background: rgba(129, 75, 246, 0.1);
-  border-bottom: 1px solid rgba(129, 75, 246, 0.1); }
+  padding-bottom: 80px;
+  background: rgba(2,75,98,255);
+  border-bottom: 1px solid rgba(2,75,98,255); }
   .scinvescompany .textbox {
     max-width: 690px;
     margin-bottom: 75px; }
@@ -544,11 +545,11 @@
 
 .members {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  column-gap: 70px;
+  grid-template-columns: repeat(2, 0.5fr);
+  column-gap: 20px;
   row-gap: 80px;
-  --sizeAvatar: 232px;
-  --sizeAvatarInner: 206px;
+  --sizeAvatar: 300px;
+  --sizeAvatarInner: 250px;
   --borderGradient: 3px; }
   .members__item {
     text-align: center; }
@@ -556,7 +557,7 @@
       width: var(--sizeAvatar);
       height: var(--sizeAvatar);
       border-radius: 50%;
-      background: rgba(129, 75, 246, 0.1);
+      background: rgba(75, 86, 246, 0.1);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -585,8 +586,8 @@
           -o-transform: translate(-50%, -50%);
           position: absolute;
           border-radius: 50%;
-          background: linear-gradient(-90deg, #df1cff 0%, #11A1BB 50.55%, #00bcff 100%);
-          background: -webkit-linear-gradient(-90deg, #df1cff 0%, #11A1BB 50.55%, #00bcff 100%);
+          background: #FE9501;
+          background: #FE9501;
           z-index: 1;
           opacity: 0;
           transition: 0.5s;
@@ -599,7 +600,7 @@
           height: calc(var(--sizeAvatarInner) - 0px);
           overflow: hidden;
           position: relative;
-          background: #1c143c;
+          background: #1d2832;
           border-radius: 50%;
           z-index: 10;
           transition: 0.5s;
@@ -691,7 +692,7 @@
           color: #11A1BB; }
   @media screen and (max-width: 1199px) {
     .members {
-      grid-template-columns: repeat(3, 1fr); } }
+      grid-template-columns: repeat(2, 1fr); } }
   @media screen and (max-width: 991px) {
     .members {
       grid-template-columns: repeat(2, 1fr); } }

@@ -318,9 +318,9 @@
       line-height: var(--h1-lh); }
   .scmainblog__featured {
     display: grid;
-    grid-template-columns: 1fr 396px;
-    grid-template-rows: repeat(2, 288px);
+    grid-template-columns: 1fr 48%;
     gap: var(--gap);
+    row-gap: 0px;
     margin-top: 80px; }
     .scmainblog__featured-item {
       background: rgba(17, 161, 187, 0.1);
@@ -349,7 +349,7 @@
       margin-top: 80px; }
   .scmainblog__item {
     display: grid;
-    grid-template-columns: 1fr 470px;
+    grid-template-columns: 1fr 396px;
     column-gap: 56px;
     padding: 50px;
     background-color: rgba(17, 161, 187, 0.1);
@@ -552,7 +552,7 @@
   .itemblog .contentblog {
     text-align: left; }
     .itemblog .contentblog .heading {
-      text-align: left;
+      text-align: center;
       margin-left: 0; }
   .itemblog .hashtag {
     display: none; }
