@@ -472,7 +472,9 @@
     align-items: center;
     font-family: im;
     font-size: var(--body14-fs);
-    line-height: var(--body14-lh); }
+    line-height: var(--body14-lh); 
+    text-align: justify;
+  }
     .contentblog .info__date img {
       margin-right: 5px; }
 
@@ -570,8 +572,10 @@
     -moz-transition: background 0.3s;
     -ms-transition: background 0.3s;
     -o-transition: background 0.3s; }
-  @media screen and (max-width: 991px) {
+  @media screen and (max-width: 767px) {
     .itemblog.--big .contentblog {
       text-align: center; }
       .itemblog.--big .contentblog .heading {
         text-align: center; } }
+        .itemblog.--big {
+          padding: 50px 30px; }

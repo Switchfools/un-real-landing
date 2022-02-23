@@ -71,7 +71,8 @@
       .scfeaturesmain__content-img img {
         width: 100%; }
     .scfeaturesmain__content-text {
-      align-self: center; }
+      align-self: center; 
+    }
       .scfeaturesmain__content-text .heading {
         margin: 14px 0; }
   .scfeaturesmain__controls {
@@ -295,7 +296,8 @@
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
         text-overflow: ellipsis;
-        overflow: hidden; }
+        overflow: hidden; 
+      }
       .scfeaturesup .scfeaturesup__slider .swiper-content .text.active {
         opacity: 1; }
   .scfeaturesup .scfeaturesup__slider .swiper-controls {
