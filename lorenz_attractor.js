@@ -1,8 +1,8 @@
 var simulation = document.getElementById("simulation");
-simulation.innerHeight = window.innerHeight;
-simulation.innerWidth = window.innerWidth*0.4;
+if (window.innerWidth > window.innerHeight) {simulation.innerWidth = window.innerWidth/2.5;simulation.innerHeight = window.innerHeight;}
+else{simulation.innerWidth = window.innerWidth*0.8;simulation.innerHeight = window.innerHeight/2.5;}
 var renderer = new THREE.WebGLRenderer({canvas:simulation,alpha:true});
-renderer.setSize(simulation.innerWidth, simulation.innerHeight*0.7); 
+renderer.setSize(simulation.innerWidth, simulation.innerHeight*0.8); 
 renderer.setClearColor(0xffffff, 0);
 renderer.setPixelRatio( window.devicePixelRatio );
 
