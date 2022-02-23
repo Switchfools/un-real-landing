@@ -677,10 +677,15 @@
         opacity: 1; }
     .members__item .name {
       margin-bottom: 2px;
-      color: #fff; }
+      color: #fff; 
+    }
     .members__item .pos {
       font-size: var(--body14-fs);
       line-height: var(--body14-lh); }
+      .members__item .pos_tittle {
+        font-size: var(--body14-fs);
+        line-height: var(--body14-lh); 
+        font-style: italic;}
       .members__item .pos a {
         font-family: im;
         transition: 0.5s;
