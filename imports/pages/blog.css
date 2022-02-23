@@ -318,7 +318,7 @@
       line-height: var(--h1-lh); }
   .scmainblog__featured {
     display: grid;
-    grid-template-columns: 1fr 47%;
+    grid-template-columns: 1fr 48.5%;
     gap: var(--gap);
     row-gap: 0px;
     margin-top: 80px; }
