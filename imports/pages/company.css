@@ -714,7 +714,6 @@
 
         .members_investor {
           display: grid;
-          grid-template-columns: repeat(1, 0.5fr);
           column-gap: 20px;
           row-gap: 80px;
           --sizeAvatar: 300px;
