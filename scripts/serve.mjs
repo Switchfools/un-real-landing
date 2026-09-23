@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { extname, resolve, sep } from 'node:path';
 
 // Both local preview URLs serve precisely the deployable tree.
-const root = fileURLToPath(new URL('../site/', import.meta.url));
+const root = fileURLToPath(new URL('../dist/', import.meta.url));
 const port = Number(process.env.PORT || 4173);
 const prefix = '/un-real-landing/';
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',

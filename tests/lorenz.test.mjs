@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createClock, createParticles, project, step } from '../site/scripts/lorenz.js';
+import { advanceParticles, createClock, createParticles, FLOW_SPEED, FRAME_STEP, project, step, viewAt } from '../site/scripts/lorenz.js';
 
 test('initial particles are deterministic and populate both lobes', () => {
   const first = createParticles();
@@ -29,23 +29,54 @@ test('long trajectories stay finite, bounded, and inside the artboard', () => {
   for (let i = 0; i < 60000; i++) {
     step(state);
     assert.ok(state.every(value => Number.isFinite(value) && Math.abs(value) < 65));
-    const [x, y] = project(state[0], state[1]);
+    const [x, y] = project(state[0], state[1], state[2]);
     assert.ok(x > 0 && x < 620 && y > 0 && y < 520);
   }
 });
 
-test('fixed projection preserves the diagonal brand orientation at every size', () => {
-  const lowerLeft = project(-9, -9);
-  const upperRight = project(9, 9);
+test('perspective preserves the diagonal brand orientation at every size', () => {
+  const lowerLeft = project(-9, -9, 25);
+  const upperRight = project(9, 9, 25);
   assert.ok(lowerLeft[0] < 310 && lowerLeft[1] > 260);
   assert.ok(upperRight[0] > 310 && upperRight[1] < 260);
-  assert.deepEqual(project(9, 9, 310, 260), upperRight.map(value => value / 2));
+  assert.deepEqual(project(9, 9, 25, 310, 260).slice(0, 2), upperRight.slice(0, 2).map(value => value / 2));
+});
+
+test('the third coordinate affects position and apparent particle size', () => {
+  const far = project(9, 9, 5);
+  const near = project(9, 9, 45);
+  assert.notDeepEqual(far.slice(0, 2), near.slice(0, 2));
+  assert.ok(near[2] > far[2]);
+  assert.ok(near[3] > far[3]);
+});
+
+test('slow flow remains accurate and smooth across fixed simulation steps', () => {
+  const particles = new Float64Array([1, 1, 1]);
+  for (let i = 0; i < 120; i++) advanceParticles(particles);
+  const reference = new Float64Array([1, 1, 1]);
+  for (let i = 0; i < 1200; i++) step(reference, 0, FLOW_SPEED / 1200);
+  assert.ok(Math.hypot(...particles.map((v, i) => v - reference[i])) < 1e-7);
+  assert.ok(FLOW_SPEED < 0.1);
+  const [beforeX, beforeY] = project(...particles);
+  advanceParticles(particles, FRAME_STEP);
+  const [afterX, afterY] = project(...particles);
+  assert.ok(Math.hypot(afterX - beforeX, afterY - beforeY) < 1);
+});
+
+test('camera drift reveals depth without spinning the butterfly', () => {
+  const origin = viewAt(0);
+  assert.notDeepEqual(viewAt(10), origin);
+  for (let time = 0; time < 360; time++) {
+    const view = viewAt(time);
+    assert.ok(Math.abs(view.yaw - origin.yaw) <= 0.055);
+    assert.ok(Math.abs(view.pitch - origin.pitch) <= 0.035);
+  }
 });
 
 test('simulation timing is independent of display refresh rate', () => {
   function simulate(fps) {
     const state = [1, 1, 1];
-    const clock = createClock(() => step(state));
+    const clock = createClock(elapsed => advanceParticles(state, elapsed));
     for (let i = 0; i <= fps * 3; i++) clock.tick(i * 1000 / fps);
     return state;
   }

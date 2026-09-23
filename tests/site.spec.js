@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { buildSite } from '../scripts/build.mjs';
 
 for (const path of ['/', '/un-real-landing/']) {
   test(`loads the full site and every asset at ${path}`, async ({ page }, testInfo) => {
@@ -15,7 +18,7 @@ for (const path of ['/', '/un-real-landing/']) {
       expect(await image.evaluate(node => node.complete && node.naturalWidth > 0)).toBe(true);
     }
     await expect(page.getByRole('link', { name: 'Let’s start a conversation' })).toHaveAttribute('href', 'mailto:contact-us@un-real.ai');
-    for (const name of ['Mission', 'Alignment', 'Get in touch']) {
+    for (const name of ['Mission', 'Alignment', 'Essays', 'Get in touch']) {
       const link = page.getByRole('navigation').getByRole('link', { name });
       const href = await link.getAttribute('href');
       await link.click();
@@ -32,19 +35,20 @@ for (const path of ['/', '/un-real-landing/']) {
   });
 }
 
-test('motion starts, can be paused by keyboard, and resumes', async ({ page }) => {
+test('motion starts, can be paused by keyboard, and resumes', async ({ page }, testInfo) => {
   await page.goto('/');
   const figure = page.locator('[data-attractor]');
   const snapshot = () => figure.locator('canvas').evaluate(node => node.toDataURL());
   await expect(figure).toHaveAttribute('data-animation', 'running');
   const moving = await snapshot();
   await expect.poll(snapshot).not.toBe(moving);
-  const button = figure.getByRole('button');
+  const button = figure.locator('.motion-toggle');
   await button.focus();
   await page.keyboard.press('Space');
   await expect(button).toHaveAttribute('aria-pressed', 'true');
   await expect(button).toContainText('Resume motion');
   const paused = await snapshot();
+  await figure.screenshot({ path: testInfo.outputPath('attractor.png') });
   await page.waitForTimeout(200);
   expect(await snapshot()).toBe(paused);
   await page.keyboard.press('Enter');
@@ -70,7 +74,7 @@ test('offscreen and hidden tabs suspend motion without overriding a user pause',
     document.dispatchEvent(new Event('visibilitychange'));
   });
   await expect(figure).toHaveAttribute('data-animation', 'running');
-  await figure.getByRole('button').click();
+  await figure.locator('.motion-toggle').click();
   await page.locator('#contact').scrollIntoViewIfNeeded();
   await figure.scrollIntoViewIfNeeded();
   await expect(figure).toHaveAttribute('data-animation', 'paused');
@@ -83,7 +87,8 @@ test('reduced motion and preference changes use the static butterfly', async ({ 
   await expect(figure).toHaveAttribute('data-animation', 'static');
   await expect(figure.locator('.attractor-fallback')).toBeVisible();
   await expect(figure.locator('canvas')).toHaveCSS('opacity', '0');
-  await expect(figure.getByRole('button')).toBeHidden();
+  await expect(figure.locator('.motion-toggle')).toBeHidden();
+  await expect(figure.locator('.view-reset')).toBeHidden();
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await expect(figure).toHaveAttribute('data-animation', 'running');
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -127,4 +132,43 @@ test('page meets automated WCAG AA checks and exposes a skip link', async ({ pag
   await expect(page).toHaveURL(/#main$/);
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   expect(results.violations).toEqual([]);
+});
+
+test('3D view can be dragged and reset while the flow stays paused', async ({ page }) => {
+  await page.goto('/');
+  const figure = page.locator('[data-attractor]');
+  await figure.scrollIntoViewIfNeeded();
+  await figure.locator('.motion-toggle').click();
+  const snapshot = () => figure.locator('canvas').evaluate(node => node.toDataURL());
+  const original = await snapshot();
+  const bounds = await figure.locator('.attractor-viewport').boundingBox();
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + bounds.width * 0.72, bounds.y + bounds.height * 0.6, { steps: 10 });
+  await page.mouse.up();
+  expect(await snapshot()).not.toBe(original);
+  await expect(figure).toHaveAttribute('data-animation', 'paused');
+  await figure.getByRole('button', { name: 'Reset 3D view' }).click();
+  expect(await snapshot()).toBe(original);
+});
+
+test('published Markdown essays have working Pages links and an action section', async ({ page }, testInfo) => {
+  const outDir = testInfo.outputPath('dist');
+  await buildSite({ contentDir: resolve('tests/fixtures/essays'), outDir });
+  const home = await readFile(resolve(outDir, 'index.html'), 'utf8');
+  const essay = await readFile(resolve(outDir, 'essays/from-belief-to-action/index.html'), 'utf8');
+  await page.route('http://127.0.0.1:4173/un-real-landing/', route => route.fulfill({ contentType: 'text/html', body: home }));
+  await page.route('**/essays/from-belief-to-action/', route => route.fulfill({ contentType: 'text/html', body: essay }));
+  await page.goto('/un-real-landing/#essays');
+  await page.locator('.essay-link').click();
+  await expect(page).toHaveURL(/\/un-real-landing\/essays\/from-belief-to-action\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('From belief to action');
+  await expect(page.locator('.essay-prose strong')).toHaveText('testable commitment');
+  await expect(page.locator('.essay-action')).toContainText('Write down one assumption and test it this week.');
+  await expect(page.locator('.essay-action a')).toHaveAttribute('href', 'mailto:contact-us@un-real.ai');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath('essay.png'), fullPage: true });
+  await page.getByRole('link', { name: 'All essays' }).click();
+  await expect(page).toHaveURL(/\/un-real-landing\/#essays$/);
 });
