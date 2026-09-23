@@ -7,6 +7,9 @@ turns Markdown into static HTML and writes the deployable website to `dist/`.
 The published site has no runtime dependencies. The previous commercial site
 remains available in Git history before the rewrite.
 
+The build gives CSS and JavaScript content-based filenames so browsers always
+load matching files after a deployment instead of mixing cached releases.
+
 ## Preview
 
 With Node.js 22 or later:
@@ -41,14 +44,14 @@ for formatting and publishing details.
 
 ```sh
 npm ci
-npx playwright install chromium
+npx playwright install chromium webkit
 npm run assets:check
 npm run check
 ```
 
 `npm test` checks numerical integration, bounds, 3D projection, fluid timing,
 and Markdown publishing (including draft exclusion and required actions).
-`npm run test:browser` checks desktop/mobile rendering, both hosting paths,
+`npm run test:browser` checks Chromium, mobile, and Safari/WebKit rendering, both hosting paths,
 links, assets, accessibility, pause/resume, visibility, resizing, reduced
 motion, dragging/resetting the 3D view, essay layouts, and static fallbacks.
 Playwright, axe, Marked, and YAML are development/build tools only.
@@ -70,9 +73,12 @@ keep the motion fluid across display refresh rates. Adjust `FLOW_SPEED` to tune
 the flow without changing the attractor's parameters or initial shape.
 
 The renderer advances at fixed time steps, caps density at 2×, and suspends
-work when offscreen, hidden, or manually paused. Reduced motion, unavailable
-canvas, and disabled JavaScript retain the static SVG. All content and
-navigation work without motion.
+work when offscreen, hidden, or manually paused. With a reduced-motion device
+setting, it starts with the static SVG and a visible **Play motion** button.
+Explicitly playing overrides that default for this site; playing or pausing
+is remembered in local browser storage. Blocked storage does not prevent
+playback. Unavailable canvas or disabled JavaScript retain the static SVG.
+All content and navigation work without motion.
 
 After changing the simulation or projection, run `npm run assets` to regenerate
 the fallback and favicon SVGs. `npm run assets:check` catches drift in CI. Run
@@ -110,6 +116,7 @@ Actions-based deployment does not require a CNAME file.
 ## Content
 
 Edit `site/index.html` directly. Contact links use `mailto:contact-us@un-real.ai`;
-there is no form backend, tracking, or data storage. Verify that mailbox
+there is no form backend or tracking. Only the animation preference is saved
+locally in the browser. Verify that mailbox
 operationally before launch. Update the copyright year when needed. The page
 describes commitments, not established projects or research results.

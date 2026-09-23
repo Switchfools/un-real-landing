@@ -1,4 +1,5 @@
 import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { basename, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Marked } from 'marked';
@@ -100,6 +101,29 @@ function essayPage(essay, home) {
 `;
 }
 
+async function versionRuntime(output) {
+  const name = (basename, source, extension) => `${basename}.${createHash('sha256').update(source).digest('hex').slice(0, 12)}.${extension}`;
+  const math = await readFile(join(output, 'scripts/lorenz.js'), 'utf8');
+  const mathName = name('lorenz', math, 'js');
+  const entry = (await readFile(join(output, 'scripts/attractor.js'), 'utf8')).replace("'./lorenz.js'", `'./${mathName}'`);
+  const entryName = name('attractor', entry, 'js');
+  const css = await readFile(join(output, 'styles/main.css'), 'utf8');
+  const cssName = name('main', css, 'css');
+  // Reference matching CSS and JS, including the imported math module, so a
+  // browser cannot combine cached code with a different deployment's files.
+  for (const [original, versioned, source] of [
+    ['scripts/lorenz.js', `scripts/${mathName}`, math],
+    ['scripts/attractor.js', `scripts/${entryName}`, entry],
+    ['styles/main.css', `styles/${cssName}`, css],
+  ]) {
+    await writeFile(join(output, versioned), source);
+    await rm(join(output, original));
+  }
+  const versions = { 'scripts/attractor.js': `scripts/${entryName}`, 'styles/main.css': `styles/${cssName}` };
+  return html => html.replace(/((?:href|src)="(?:\.\/|\.\.\/\.\.\/))(scripts\/attractor\.js|styles\/main\.css)"/g,
+    (_, prefix, asset) => `${prefix}${versions[asset]}"`);
+}
+
 export async function buildSite({ contentDir = join(projectRoot, 'content/essays'), outDir = join(projectRoot, 'dist') } = {}) {
   // Parse and validate before touching output. Only the generated tree is replaced.
   const essays = await readEssays(contentDir);
@@ -114,13 +138,13 @@ export async function buildSite({ contentDir = join(projectRoot, 'content/essays
   }
   await rm(output, { recursive: true, force: true });
   await cp(join(projectRoot, 'site'), output, { recursive: true });
-  if (essays.length) {
-    await writeFile(join(output, 'index.html'), home.replace(/<!-- essays:start -->[\s\S]*?<!-- essays:end -->/, `<!-- essays:start -->\n        ${essayList(essays)}\n        <!-- essays:end -->`));
-  }
+  const versionAssets = await versionRuntime(output);
+  const homepage = essays.length ? home.replace(/<!-- essays:start -->[\s\S]*?<!-- essays:end -->/, `<!-- essays:start -->\n        ${essayList(essays)}\n        <!-- essays:end -->`) : home;
+  await writeFile(join(output, 'index.html'), versionAssets(homepage));
   for (const essay of essays) {
     const directory = join(output, 'essays', essay.slug);
     await mkdir(directory, { recursive: true });
-    await writeFile(join(directory, 'index.html'), essayPage(essay, home));
+    await writeFile(join(directory, 'index.html'), versionAssets(essayPage(essay, home)));
   }
   return essays.length;
 }

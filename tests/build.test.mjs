@@ -57,3 +57,16 @@ test('a published essay needs a concrete action and valid publication date', asy
   await writeFile(path, essay({ date: '2026-02-30' }));
   await assert.rejects(buildSite(options), /valid YYYY-MM-DD/);
 });
+
+test('deployment references a matching version of the animation, math module and CSS', async t => {
+  const options = await fixture(t);
+  await buildSite(options);
+  const home = await readFile(join(options.outDir, 'index.html'), 'utf8');
+  const script = home.match(/src="\.\/(scripts\/attractor\.[a-f0-9]+\.js)"/)[1];
+  const css = home.match(/href="\.\/(styles\/main\.[a-f0-9]+\.css)"/)[1];
+  const entry = await readFile(join(options.outDir, script), 'utf8');
+  const math = entry.match(/from '\.\/(lorenz\.[a-f0-9]+\.js)'/)[1];
+  assert.ok((await readFile(join(options.outDir, 'scripts', math), 'utf8')).includes('export function viewAt'));
+  assert.ok((await readFile(join(options.outDir, css), 'utf8')).includes('.attractor-canvas'));
+  assert.doesNotMatch(home, /src="\.\/scripts\/attractor\.js"/);
+});

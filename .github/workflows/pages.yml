@@ -23,7 +23,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm run assets:check
       - run: npm run check
       - name: Upload site

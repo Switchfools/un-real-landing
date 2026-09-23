@@ -5,11 +5,19 @@ function mountAttractor(figure) {
   const button = figure.querySelector('.motion-toggle');
   const resetButton = figure.querySelector('.view-reset');
   const label = button.querySelector('span');
+  const notice = figure.querySelector('.motion-notice');
   const viewport = figure.querySelector('.attractor-viewport');
   const context = canvas.getContext('2d', { alpha: true });
   if (!context) return;
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const preferenceKey = 'unreal-motion';
+  let motionPreference = null;
+  try {
+    const saved = localStorage.getItem(preferenceKey);
+    if (saved === 'play' || saved === 'pause') motionPreference = saved === 'play';
+  } catch { /* A blocked preference store must not prevent animation startup. */ }
+  const wantsMotion = () => motionPreference ?? !reducedMotion.matches;
   const particles = createParticles(window.innerWidth < 700 ? 1400 : 2600);
   const previous = particles.slice();
   const projected = new Float32Array(particles.length / 3 * 4);
@@ -25,7 +33,7 @@ function mountAttractor(figure) {
     pitch += (targetPitch - pitch) * easing;
   });
   let width = 0, height = 0, frame = null;
-  let inView = false, paused = false, failed = false;
+  let inView = false, failed = false;
   const cleanups = [];
   const sprite = document.createElement('canvas');
   sprite.width = sprite.height = 32;
@@ -74,6 +82,7 @@ function mountAttractor(figure) {
     figure.dataset.animation = 'unavailable';
     button.hidden = true;
     resetButton.hidden = true;
+    notice.hidden = true;
     figure.querySelector('.plot-label').textContent = 'Possibility, unfolding.';
     viewport.classList.remove('is-interactive', 'is-dragging');
   }
@@ -92,15 +101,21 @@ function mountAttractor(figure) {
   function sync() {
     stop();
     if (failed) return;
-    button.hidden = reducedMotion.matches;
-    resetButton.hidden = reducedMotion.matches;
-    figure.querySelector('.plot-label').textContent = reducedMotion.matches ? 'Possibility, unfolding.' : 'Drag to explore in 3D';
-    viewport.classList.toggle('is-interactive', !reducedMotion.matches);
-    button.setAttribute('aria-pressed', String(paused));
-    label.textContent = paused ? 'Resume motion' : 'Pause motion';
-    if (reducedMotion.matches) {
+    const enabled = wantsMotion();
+    const showStill = reducedMotion.matches && !enabled;
+    // Reduced motion sets the default, but must never remove the user's way
+    // to explicitly play the animation. That choice also survives a reload.
+    button.hidden = false;
+    resetButton.hidden = showStill;
+    notice.hidden = !showStill;
+    notice.textContent = motionPreference === null ? 'Motion is paused to match your device setting. You can play it below.' : 'Motion paused. You can play it below.';
+    figure.querySelector('.plot-label').textContent = showStill ? 'Motion paused' : 'Drag to explore in 3D';
+    viewport.classList.toggle('is-interactive', !showStill);
+    button.setAttribute('aria-pressed', String(!enabled));
+    label.textContent = enabled ? 'Pause motion' : showStill ? 'Play motion' : 'Resume motion';
+    if (showStill) {
       figure.dataset.animation = 'static';
-    } else if (paused || !inView || document.hidden) {
+    } else if (!enabled || !inView || document.hidden) {
       figure.dataset.animation = 'paused';
     } else {
       figure.dataset.animation = 'running';
@@ -123,8 +138,14 @@ function mountAttractor(figure) {
   }
 
   function listen(target, event, listener) {
-    target.addEventListener(event, listener);
-    cleanups.push(() => target.removeEventListener(event, listener));
+    if (typeof target.addEventListener === 'function') {
+      target.addEventListener(event, listener);
+      cleanups.push(() => target.removeEventListener(event, listener));
+    } else if (event === 'change' && typeof target.addListener === 'function') {
+      // MediaQueryList used addListener in older Safari releases.
+      target.addListener(listener);
+      cleanups.push(() => target.removeListener(listener));
+    }
   }
 
   function redrawView() {
@@ -141,7 +162,7 @@ function mountAttractor(figure) {
   }
 
   listen(viewport, 'pointerdown', event => {
-    if (failed || reducedMotion.matches || event.button !== 0) return;
+    if (failed || reducedMotion.matches && !wantsMotion() || event.button !== 0) return;
     drag = { id: event.pointerId, x: event.clientX, y: event.clientY,
       yaw: targetYaw, pitch: targetPitch, active: event.pointerType !== 'touch' };
     if (drag.active) {
@@ -170,35 +191,50 @@ function mountAttractor(figure) {
     targetYaw = targetPitch = 0;
     redrawView();
   });
-  listen(button, 'click', () => { paused = !paused; sync(); });
+  listen(button, 'click', () => {
+    motionPreference = !wantsMotion();
+    try { localStorage.setItem(preferenceKey, motionPreference ? 'play' : 'pause'); } catch { /* Optional storage. */ }
+    sync();
+  });
   listen(document, 'visibilitychange', sync);
   listen(reducedMotion, 'change', sync);
   listen(canvas, 'contextlost', fail);
   listen(window, 'resize', resize);
-  const resizeObserver = new ResizeObserver(resize);
-  resizeObserver.observe(viewport);
-  const visibilityObserver = new IntersectionObserver(([entry]) => {
+  const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
+  resizeObserver?.observe(viewport);
+  function checkVisibility() {
+    const bounds = viewport.getBoundingClientRect();
+    inView = bounds.width > 0 && bounds.height > 0 && bounds.bottom > 0 && bounds.top < window.innerHeight;
+    sync();
+  }
+  const visibilityObserver = typeof IntersectionObserver === 'function' ? new IntersectionObserver(([entry]) => {
     inView = entry.isIntersecting;
     sync();
-  });
-  visibilityObserver.observe(viewport);
+  }) : null;
+  if (visibilityObserver) visibilityObserver.observe(viewport);
+  else {
+    listen(window, 'scroll', checkVisibility);
+    listen(window, 'resize', checkVisibility);
+  }
   listen(window, 'pagehide', (event) => {
     stop();
     if (event.persisted) return;
-    resizeObserver.disconnect();
-    visibilityObserver.disconnect();
+    resizeObserver?.disconnect();
+    visibilityObserver?.disconnect();
     cleanups.forEach(cleanup => cleanup());
   });
   listen(window, 'pageshow', sync);
   resize();
+  checkVisibility();
 }
 
 const figure = document.querySelector('[data-attractor]');
 if (figure) {
-  try { mountAttractor(figure); } catch {
+  try { mountAttractor(figure); } catch (error) {
     // The default HTML/SVG remains the complete, readable experience.
     figure.dataset.animation = 'unavailable';
     figure.querySelectorAll('button').forEach(button => { button.hidden = true; });
     figure.querySelector('.attractor-viewport').classList.remove('is-interactive', 'is-dragging');
+    console.error('Unable to start the Lorenz animation:', error);
   }
 }

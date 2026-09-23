@@ -80,6 +80,18 @@ test('offscreen and hidden tabs suspend motion without overriding a user pause',
   await expect(figure).toHaveAttribute('data-animation', 'paused');
 });
 
+test('opening the essays deep link resumes animation when returning to the hero', async ({ page }) => {
+  await page.goto('/un-real-landing/#essays');
+  await expect(page.locator('#essays')).toBeInViewport();
+  const figure = page.locator('[data-attractor]');
+  await expect(figure).toHaveAttribute('data-animation', 'paused');
+  await figure.scrollIntoViewIfNeeded();
+  await expect(figure).toHaveAttribute('data-animation', 'running');
+  const snapshot = () => figure.locator('canvas').evaluate(node => node.toDataURL());
+  const initial = await snapshot();
+  await expect.poll(snapshot).not.toBe(initial);
+});
+
 test('reduced motion and preference changes use the static butterfly', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
@@ -87,12 +99,55 @@ test('reduced motion and preference changes use the static butterfly', async ({ 
   await expect(figure).toHaveAttribute('data-animation', 'static');
   await expect(figure.locator('.attractor-fallback')).toBeVisible();
   await expect(figure.locator('canvas')).toHaveCSS('opacity', '0');
-  await expect(figure.locator('.motion-toggle')).toBeHidden();
+  await expect(figure.getByRole('button', { name: 'Play motion' })).toBeVisible();
+  await expect(figure.locator('.motion-notice')).toContainText('device setting');
   await expect(figure.locator('.view-reset')).toBeHidden();
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await expect(figure).toHaveAttribute('data-animation', 'running');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(figure).toHaveAttribute('data-animation', 'static');
+});
+
+test('reduced motion offers an explicit play control that works and survives reload', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const figure = page.locator('[data-attractor]');
+  await expect(figure).toHaveAttribute('data-animation', 'static');
+  await figure.getByRole('button', { name: 'Play motion' }).click();
+  await expect(figure).toHaveAttribute('data-animation', 'running');
+  await expect(figure.locator('canvas')).toHaveCSS('opacity', '1');
+  await expect(figure.locator('.attractor-fallback')).toBeHidden();
+  const snapshot = () => figure.locator('canvas').evaluate(node => node.toDataURL());
+  const initial = await snapshot();
+  await expect.poll(snapshot).not.toBe(initial);
+  await page.reload();
+  await expect(figure).toHaveAttribute('data-animation', 'running');
+  await figure.getByRole('button', { name: 'Pause motion' }).click();
+  await expect(figure).toHaveAttribute('data-animation', 'static');
+  await page.reload();
+  await expect(figure).toHaveAttribute('data-animation', 'static');
+  await expect(figure.getByRole('button', { name: 'Play motion' })).toBeVisible();
+});
+
+test('animation starts when observer APIs or preference storage are unavailable', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.ResizeObserver = undefined;
+    window.IntersectionObserver = undefined;
+    Storage.prototype.getItem = () => { throw new Error('Storage disabled'); };
+    Storage.prototype.setItem = () => { throw new Error('Storage disabled'); };
+    const match = window.matchMedia.bind(window);
+    window.matchMedia = query => {
+      const media = match(query);
+      return { matches: media.matches, addListener: media.addListener.bind(media), removeListener: media.removeListener.bind(media) };
+    };
+  });
+  await page.goto('/');
+  const figure = page.locator('[data-attractor]');
+  await expect(figure).toHaveAttribute('data-animation', 'running');
+  await figure.locator('.motion-toggle').click();
+  await expect(figure).toHaveAttribute('data-animation', 'paused');
+  await figure.locator('.motion-toggle').click();
+  await expect(figure).toHaveAttribute('data-animation', 'running');
 });
 
 test('static content and brand work without JavaScript', async ({ browser }) => {
@@ -123,10 +178,11 @@ test('resizes without clipping, overflow, or excessive pixel density', async ({ 
   }
 });
 
-test('page meets automated WCAG AA checks and exposes a skip link', async ({ page }) => {
+test('page meets automated WCAG AA checks and exposes a skip link', async ({ page, browserName }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  await page.keyboard.press('Tab');
+  // Safari on macOS uses Option-Tab to include links in keyboard navigation.
+  await page.keyboard.press(browserName === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab');
   await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#main$/);
