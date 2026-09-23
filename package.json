@@ -1,0 +1,22 @@
+{
+  "name": "un-real-landing",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The mission of un-real.ai: alignment, coexistence, and symbiosis.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "playwright test",
+    "check": "npm test && npm run test:browser",
+    "assets": "node scripts/generate-assets.mjs",
+    "assets:check": "node scripts/generate-assets.mjs --check"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0"
+  }
+}

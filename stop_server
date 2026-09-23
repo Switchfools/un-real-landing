@@ -1,2 +1,0 @@
-sudo echo "starting server"
-sudo service apache2 stop
