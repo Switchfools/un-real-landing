@@ -119,4 +119,16 @@ Edit `site/index.html` directly. Contact links use `mailto:contact-us@un-real.ai
 there is no form backend or tracking. Only the animation preference is saved
 locally in the browser. Verify that mailbox
 operationally before launch. Update the copyright year when needed. The page
-describes commitments, not established projects or research results.
+describes our commitments and their application in Karteria, without claiming
+research results or proven fitness outcomes.
+
+The **Mission in practice** section (`#practice`) introduces Karteria as our
+first integration: an endurance fitness app in private development. Its copy
+reflects the athlete-reviewed coaching and plan-approval flows in the Karteria
+repository. Link visitors to the public [Karteria landing](https://karteria.ai/);
+update the development status only when public access actually changes.
+
+`site/assets/karteria/logo.svg` and `stride.svg` are unchanged copies of
+`landing/assets/` in the Karteria repository, originally supplied in its brand
+handoff. Keep their original geometry and colors. The track lines around the
+mark are decorative; the section does not show a simulated app or athlete data.

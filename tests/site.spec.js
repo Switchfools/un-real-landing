@@ -18,7 +18,7 @@ for (const path of ['/', '/un-real-landing/']) {
       expect(await image.evaluate(node => node.complete && node.naturalWidth > 0)).toBe(true);
     }
     await expect(page.getByRole('link', { name: 'Let’s start a conversation' })).toHaveAttribute('href', 'mailto:contact-us@un-real.ai');
-    for (const name of ['Mission', 'Alignment', 'Essays', 'Get in touch']) {
+    for (const name of ['Mission', 'Alignment', 'In practice', 'Essays', 'Get in touch']) {
       const link = page.getByRole('navigation').getByRole('link', { name });
       const href = await link.getAttribute('href');
       await link.click();
@@ -31,6 +31,7 @@ for (const path of ['/', '/un-real-landing/']) {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.evaluate(() => { window.scrollTo({ top: 0, behavior: 'instant' }); return document.fonts.ready; });
       await page.screenshot({ path: testInfo.outputPath('page.png'), fullPage: true });
+      await page.locator('#practice').screenshot({ path: testInfo.outputPath('practice.png') });
     }
   });
 }
