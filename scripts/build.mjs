@@ -2,38 +2,21 @@ import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { basename, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Marked } from 'marked';
-import { parse as parseYaml } from 'yaml';
+import { parseEssay, validateEssay, renderArticle, escape, displayDate, wordCount, validSlug } from './essays.mjs';
 
 const projectRoot = resolve(fileURLToPath(new URL('../', import.meta.url)));
-const markdown = new Marked({ gfm: true, async: false,
-  walkTokens(token) { if (token.type === 'heading') token.depth = Math.max(2, token.depth); },
-});
-const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
-const displayDate = date => new Intl.DateTimeFormat('en', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
-
 async function readEssays(directory) {
   const essays = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     if (!entry.isFile() || !entry.name.endsWith('.md') || entry.name.startsWith('_') || entry.name === 'README.md') continue;
     const source = await readFile(join(directory, entry.name), 'utf8');
-    const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/);
-    if (!match) throw new Error(`${entry.name}: start with YAML front matter between --- lines.`);
-    const metadata = parseYaml(match[1]);
-    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) throw new Error(`${entry.name}: invalid front matter.`);
-    if (metadata.draft === true) continue;
-    if (metadata.draft !== undefined && metadata.draft !== false) throw new Error(`${entry.name}: draft must be true or false.`);
-    for (const field of ['title', 'description', 'date', 'author', 'action']) {
-      if (typeof metadata[field] !== 'string' || !metadata[field].trim()) throw new Error(`${entry.name}: provide a nonempty ${field}.`);
-    }
-    const date = new Date(`${metadata.date}T00:00:00Z`);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(metadata.date) || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== metadata.date) {
-      throw new Error(`${entry.name}: date must be a valid YYYY-MM-DD date.`);
-    }
+    let document;
+    try { document = parseEssay(source); } catch (error) { throw new Error(`${entry.name}: ${error.message}`); }
+    if (document.metadata.draft === true) continue;
+    try { validateEssay(document, true); } catch (error) { throw new Error(`${entry.name}: ${error.message}`); }
     const slug = entry.name.slice(0, -3);
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error(`${entry.name}: use a lowercase, hyphen-separated filename.`);
-    if (!match[2].trim()) throw new Error(`${entry.name}: the essay body is empty.`);
-    essays.push({ ...metadata, slug, html: markdown.parse(match[2]), minutes: Math.max(1, Math.ceil(match[2].trim().split(/\s+/).length / 220)) });
+    if (!validSlug(slug)) throw new Error(`${entry.name}: use a lowercase, hyphen-separated filename.`);
+    essays.push({ ...document.metadata, ...document, slug, minutes: Math.max(1, Math.ceil(wordCount(document.body) / 220)) });
   }
   return essays.sort((a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug));
 }
@@ -73,27 +56,14 @@ function essayPage(essay, home) {
   <link rel="icon" type="image/svg+xml" href="../../assets/brand/favicon.svg">
   <link rel="apple-touch-icon" href="../../assets/brand/apple-touch-icon.png">
   <link rel="stylesheet" href="../../styles/main.css">
+  <script type="module" src="../../scripts/essay.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
   ${header}
   <main id="main" class="shell">
-    <article class="essay-page" aria-labelledby="essay-title">
-      <a class="essay-back" href="../../#essays">← All essays</a>
-      <header class="essay-header">
-        <p class="eyebrow">Essays &amp; convictions</p>
-        <h1 id="essay-title">${escape(essay.title)}</h1>
-        <p class="essay-deck">${escape(essay.description)}</p>
-        <p class="essay-byline"><span>${escape(essay.author)}</span><time datetime="${essay.date}">${displayDate(essay.date)}</time><span>${essay.minutes} min read</span></p>
-      </header>
-      <div class="essay-prose">${essay.html}</div>
-      <section class="essay-action" aria-labelledby="action-title">
-        <p class="eyebrow">Make the idea count</p>
-        <h2 id="action-title">From belief to action</h2>
-        <p>${escape(essay.action)}</p>
-        <a class="text-link" href="mailto:contact-us@un-real.ai">Put this idea to work together <span aria-hidden="true">↗</span></a>
-      </section>
-    </article>
+    <a class="essay-back" href="../../#essays">← All essays</a>
+    ${renderArticle(essay)}
   </main>
   ${footer}
 </body>
@@ -119,14 +89,31 @@ async function versionRuntime(output) {
     await writeFile(join(output, versioned), source);
     await rm(join(output, original));
   }
-  const versions = { 'scripts/attractor.js': `scripts/${entryName}`, 'styles/main.css': `styles/${cssName}` };
-  return html => html.replace(/((?:href|src)="(?:\.\/|\.\.\/\.\.\/))(scripts\/attractor\.js|styles\/main\.css)"/g,
+  const essayScript = await readFile(join(output, 'scripts/essay.js'), 'utf8');
+  const essayScriptName = name('essay', essayScript, 'js');
+  await writeFile(join(output, 'scripts', essayScriptName), essayScript);
+  await rm(join(output, 'scripts/essay.js'));
+  const versions = { 'scripts/essay.js': `scripts/${essayScriptName}`, 'scripts/attractor.js': `scripts/${entryName}`, 'styles/main.css': `styles/${cssName}` };
+  return html => html.replace(/((?:href|src)="(?:\.\/|\.\.\/\.\.\/))(scripts\/attractor\.js|scripts\/essay\.js|styles\/main\.css)"/g,
     (_, prefix, asset) => `${prefix}${versions[asset]}"`);
 }
 
-export async function buildSite({ contentDir = join(projectRoot, 'content/essays'), outDir = join(projectRoot, 'dist') } = {}) {
+export async function buildSite({ contentDir = join(projectRoot, 'content/essays'), outDir = join(projectRoot, 'dist'), assetsDir = join(projectRoot, 'content/essay-assets') } = {}) {
   // Parse and validate before touching output. Only the generated tree is replaced.
   const essays = await readEssays(contentDir);
+  // Only media actually referenced by published essays enters the public artifact.
+  const media = new Map();
+  for (const essay of essays) {
+    const references = JSON.stringify(essay.metadata) + essay.body;
+    for (const match of references.matchAll(/\.\.\/\.\.\/assets\/essays\/([a-z0-9-]+\/[a-zA-Z0-9._-]+\.(?:png|jpe?g|webp|gif|avif|mp3|m4a|wav|ogg))/g)) {
+      const relative = match[1];
+      try { media.set(relative, await readFile(join(assetsDir, relative))); }
+      catch (error) { if (error.code !== 'ENOENT') throw error; /* Legacy site/assets paths are copied below. */
+        try { await readFile(join(projectRoot, 'site/assets/essays', relative)); }
+        catch { throw new Error(`${essay.slug}: missing media ${relative}`); }
+      }
+    }
+  }
   const home = await readFile(join(projectRoot, 'site/index.html'), 'utf8');
   if (!home.includes('<!-- essays:start -->') || !home.includes('<!-- essays:end -->')) throw new Error('Missing essays markers in site/index.html.');
   const output = resolve(outDir);
@@ -138,6 +125,10 @@ export async function buildSite({ contentDir = join(projectRoot, 'content/essays
   }
   await rm(output, { recursive: true, force: true });
   await cp(join(projectRoot, 'site'), output, { recursive: true });
+  for (const [relative, data] of media) {
+    await mkdir(join(output, 'assets/essays', relative.split('/')[0]), { recursive: true });
+    await writeFile(join(output, 'assets/essays', relative), data);
+  }
   const versionAssets = await versionRuntime(output);
   const homepage = essays.length ? home.replace(/<!-- essays:start -->[\s\S]*?<!-- essays:end -->/, `<!-- essays:start -->\n        ${essayList(essays)}\n        <!-- essays:end -->`) : home;
   await writeFile(join(output, 'index.html'), versionAssets(homepage));

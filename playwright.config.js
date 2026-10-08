@@ -10,9 +10,12 @@ export default defineConfig({
   reporter: 'list',
   use: { baseURL: 'http://127.0.0.1:4173', trace: 'retain-on-failure' },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1000 } } },
-    { name: 'mobile', use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium' } },
+    { name: 'desktop', use: { ...devices['Desktop Chrome'], channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL, viewport: { width: 1440, height: 1000 } } },
+    { name: 'mobile', use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium', channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL } },
     { name: 'safari', use: { ...devices['Desktop Safari'], viewport: { width: 1440, height: 1000 } } },
   ],
-  webServer: { command: 'node scripts/serve.mjs', url: 'http://127.0.0.1:4173', reuseExistingServer: !process.env.CI },
+  webServer: [
+    { command: 'node scripts/serve.mjs', url: 'http://127.0.0.1:4173', reuseExistingServer: !process.env.CI },
+    { command: 'node tests/serve-studio.mjs', url: 'http://127.0.0.1:4311', reuseExistingServer: false },
+  ],
 });

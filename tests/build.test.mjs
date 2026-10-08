@@ -15,7 +15,7 @@ async function fixture(t) {
 }
 
 function essay({ title = 'An idea worth testing', date = '2026-09-23', draft = false, action = 'Test one assumption this week.' } = {}) {
-  return `---\ntitle: ${JSON.stringify(title)}\ndescription: "A belief and its implications."\ndate: "${date}"\nauthor: "Test author"\ndraft: ${draft}\naction: ${JSON.stringify(action)}\n---\n\n## A question\n\nMake it **concrete**.\n`;
+  return `---\ntitle: ${JSON.stringify(title)}\ndescription: "A belief and its implications."\ndate: "${date}"\nauthor: "Test author"\nsummary: "State the conclusion before the reasoning."\ndraft: ${draft}\naction: ${JSON.stringify(action)}\n---\n\n## A question\n\nMake it **concrete**.\n`;
 }
 
 test('empty content produces an honest empty section without template or drafts', async t => {

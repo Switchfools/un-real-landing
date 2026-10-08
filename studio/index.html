@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Essay Studio — un-real.ai</title>
+  <link rel="icon" href="/assets/brand/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles/main.css"><link rel="stylesheet" href="/studio.css">
+  <script type="module" src="/studio.js"></script>
+</head>
+<body class="studio">
+  <a class="skip-link" href="#workspace">Skip to editor</a>
+  <header class="studio-header">
+    <a href="/" aria-label="Essay Studio home"><img src="/assets/brand/lockup.svg" width="139" height="36" alt="Un-Real"></a>
+    <div class="studio-wordmark">Essay studio <span class="local-label"><span class="signal" aria-hidden="true"></span> Local workspace</span></div>
+    <span id="save-state" role="status">Opening workspace…</span>
+    <button id="save" class="primary" disabled>Save draft <kbd>⌘ S</kbd></button>
+  </header>
+  <div class="studio-layout">
+    <aside class="library" aria-label="Essay library">
+      <div class="library-heading"><span class="eyebrow">Your writing</span><span id="essay-count">00</span></div>
+      <button class="new-essay" id="new-essay"><span aria-hidden="true">＋</span> New essay</button>
+      <button class="import-essay" id="import-essay">Import Markdown <span aria-hidden="true">↗</span></button>
+      <input type="file" id="import-file" accept=".md,.markdown,text/markdown" hidden>
+      <div id="essay-list" class="library-list"></div>
+      <div class="library-note"><img src="/assets/brand/attractor.svg" alt="" width="160" height="130"><p>Ideas take shape<br>through revision.</p><span>Read. Question. Refine.</span></div>
+      <p class="storage-note">Your words, in Markdown.<br>Saved on this computer.</p>
+    </aside>
+    <main id="workspace" tabindex="-1">
+      <div class="workspace-intro"><div><p class="eyebrow">From belief to a considered idea</p><h1>The writing room<span>.</span></h1></div><p>A little clarity.<br>A new possibility.</p></div>
+      <div id="empty-state" hidden><h2>Every essay starts with an idea.</h2><p>Create an essay or import a Markdown draft to begin.</p></div>
+      <div id="document" hidden>
+        <div class="document-bar"><div><span id="draft-label" class="draft-label">Draft</span><span id="filename"></span></div><div class="document-actions"><button id="export">Export .md ↓</button><button id="release">Prepare release ↗</button></div></div>
+        <div class="work-toolbar"><div class="mode-switch" role="group" aria-label="Workspace view"><button data-mode="write" aria-pressed="false">Write</button><button data-mode="split" aria-pressed="true">Write &amp; read</button><button data-mode="read" aria-pressed="false">Read</button></div><div class="review-switch" role="group" aria-label="Review tools"><button data-panel="comments" aria-pressed="false">Comments <span id="comment-count">0</span></button><button data-panel="audio" aria-pressed="false">Audio</button><button data-panel="history" aria-pressed="false">History</button></div></div>
+        <div class="writing-area" data-mode="split">
+          <section class="editor-pane" aria-label="Write your essay">
+            <div class="pane-heading"><span class="eyebrow">The manuscript</span><span id="word-count">0 words</span></div>
+            <label class="title-label" for="title">Title</label><input id="title" class="title-input" placeholder="An idea worth exploring">
+            <label for="subtitle">Subtitle</label><input id="subtitle" placeholder="A thought that draws the reader in">
+            <details class="metadata"><summary>Author, date &amp; publishing details</summary><div class="field-grid"><label>Author<input id="author"></label><label>Date<input id="date" type="date"></label></div><label for="description">Description for the essay listing</label><textarea id="description" rows="2"></textarea><label for="action">From belief to action</label><textarea id="action" rows="2" placeholder="One concrete next step for the reader"></textarea><label for="status">Editorial stage</label><select id="status"><option>Draft</option><option>In review</option><option>Ready</option></select></details>
+            <div class="summary-editor"><div class="summary-heading"><label for="summary">The idea in brief</label><span id="summary-count">0 / 180 words</span></div><p>The conclusion comes first. Make the whole idea worth a minute.</p><textarea id="summary" rows="8" placeholder="What should a busy reader understand, even if they stop here?"></textarea></div>
+            <div class="body-heading"><label for="body">The full essay</label><button id="add-comment">Comment on selection ＋</button></div>
+            <div class="format-bar" role="group" aria-label="Markdown formatting"><button data-format="bold" title="Bold selected text"><strong>B</strong><span class="sr-only">old</span></button><button data-format="italic" title="Italic selected text"><i>I</i><span class="sr-only">talic</span></button><button data-format="heading">Heading</button><button data-format="quote">Quote</button><button data-format="link">Link</button><button id="add-image">Image ＋</button></div>
+            <textarea id="body" class="body-input" aria-label="Essay Markdown" spellcheck="true"></textarea>
+            <p class="editor-hint">Markdown supported · Select a passage in the editor or preview to leave a comment.</p>
+          </section>
+          <section class="preview-pane" aria-label="Reader preview"><div class="pane-heading"><span class="eyebrow">The reader’s view</span><span>Live preview</span></div><div id="preview"></div></section>
+        </div>
+        <aside id="review-panel" class="review-panel" aria-label="Review panel" hidden>
+          <div class="review-heading"><h2 id="panel-title">Comments</h2><button id="close-panel" aria-label="Close review panel">✕</button></div>
+          <section id="comments-panel" hidden><p class="panel-description">Select a passage to start a conversation with the draft. Your notes stay with this essay.</p><form id="comment-form" hidden><label>Selected passage<blockquote id="selected-quote"></blockquote></label><label for="comment-text">Your comment</label><textarea id="comment-text" rows="4" required placeholder="What could be clearer?"></textarea><button class="primary" type="submit">Add comment</button><button id="cancel-comment" type="button">Cancel</button></form><div id="comments-list"></div></section>
+          <section id="audio-panel" hidden><p class="panel-description">An audiobook pace. A warm, deep male voice. Choose a narrator, then listen before generating the full essay.</p>
+            <div id="audio-current"></div><button id="remove-audio" hidden>Remove attached audio</button>
+            <h3>ElevenLabs narration</h3><p id="audio-connection">Checking connection…</p>
+            <form id="audio-connect"><label for="api-key">API key</label><input id="api-key" type="password" autocomplete="off" placeholder="Kept in memory for this session"><button type="submit">Connect ElevenLabs</button></form>
+            <label for="voice-id">Voice ID</label><input id="voice-id" placeholder="Paste your chosen voice ID"><button id="load-voices">Browse my voices</button><label for="voice-list" class="sr-only">Available voices</label><select id="voice-list" hidden><option value="">Choose a voice</option></select>
+            <label for="narrator">Narrator credit</label><input id="narrator" value="Brian · ElevenLabs" placeholder="Voice name">
+            <p class="small-note">Choose a deep male voice in your ElevenLabs library. Voice quality depends on that selection. Playback keeps the recording’s natural pitch.</p>
+            <div class="audio-buttons"><button id="voice-sample">Generate short preview</button><button id="generate-audio" class="primary">Generate full narration</button></div><p class="small-note">Generation sends the saved essay to ElevenLabs and uses your account’s credits. Preview: up to 600 characters. Full essay: <span id="audio-characters">0</span> characters.</p><p id="audio-progress" role="status"></p><div id="voice-preview"></div>
+            <h3>Or attach a recording</h3><label for="audio-file">Audio file · MP3, M4A, WAV or OGG</label><input id="audio-file" type="file" accept=".mp3,.m4a,.wav,.ogg"><label class="checkbox-label"><input type="checkbox" id="uploaded-ai"> This recording uses an AI voice</label><p class="small-note">Up to 60 MB. Attaching a recording marks it as matching the current saved text.</p>
+          </section>
+          <section id="history-panel" hidden><p class="panel-description">Every save preserves the previous manuscript. Open a revision to review or restore it.</p><div id="history-list"></div></section>
+        </aside>
+      </div>
+      <div id="notice" role="status" hidden></div>
+    </main>
+  </div>
+  <dialog id="new-dialog"><form id="new-form"><p class="eyebrow">A new possibility</p><h2>Start an essay</h2><label for="new-title">Title</label><input id="new-title" required autofocus><label for="new-slug">Filename</label><div class="slug-field"><input id="new-slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*"><span>.md</span></div><p class="small-note">This name will also become the essay’s URL.</p><p id="import-name"></p><div class="dialog-actions"><button type="button" data-close-dialog>Cancel</button><button class="primary" type="submit">Create draft</button></div></form></dialog>
+  <dialog id="image-dialog"><form id="image-form"><p class="eyebrow">Make room for an image</p><h2>Add to the essay</h2><label for="image-file">Image · PNG, JPG, WebP, GIF or AVIF</label><input id="image-file" type="file" accept=".png,.jpg,.jpeg,.webp,.gif,.avif" required><label for="image-alt">Description for accessibility</label><input id="image-alt" required placeholder="What should the reader understand from this image?"><label for="image-caption">Caption or credit (optional)</label><input id="image-caption"><div class="dialog-actions"><button type="button" data-close-dialog>Cancel</button><button class="primary" type="submit">Insert image</button></div></form></dialog>
+  <dialog id="revision-dialog"><h2 id="revision-title">Saved revision</h2><pre id="revision-source"></pre><div class="dialog-actions"><button data-close-dialog>Close</button><button id="restore-revision" class="primary">Restore to editor</button></div></dialog>
+  <dialog id="release-dialog"><p class="eyebrow">One last reading</p><h2>Prepare for publication</h2><p>This creates a final Markdown copy in <code id="release-path"></code>. The next website deployment will include it. Your working draft stays in the Studio.</p><p>Review the summary, sources, images and narration before releasing.</p><p class="small-note">This does not push to GitHub or deploy the website.</p><div class="dialog-actions"><button data-close-dialog>Keep editing</button><button id="confirm-release" class="primary">Prepare final Markdown</button></div></dialog>
+</body>
+</html>

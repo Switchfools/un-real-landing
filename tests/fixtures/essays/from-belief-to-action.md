@@ -3,6 +3,7 @@ title: "From belief to action"
 description: "A publishing fixture for the essay layout."
 date: "2026-09-23"
 author: "Test author"
+summary: "Start with the conclusion, the main reasons, and what follows. Keep this at 180 words or fewer."
 draft: false
 action: "Write down one assumption and test it this week."
 ---

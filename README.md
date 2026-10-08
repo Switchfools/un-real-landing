@@ -10,6 +10,69 @@ remains available in Git history before the rewrite.
 The build gives CSS and JavaScript content-based filenames so browsers always
 load matching files after a deployment instead of mixing cached releases.
 
+## Essay Studio
+
+```sh
+npm ci
+npm run studio
+```
+
+Open http://127.0.0.1:4310/. The local Studio has a Markdown editor, live reader
+preview, a library of drafts, selected-passage comments, image uploads, saved
+revisions, and audio. Use **Save draft** or Cmd/Ctrl+S to write to disk. Unsaved
+edits have browser recovery when local storage is available. No database or
+cloud account is needed to write.
+
+**The Imperfect Wish** is imported as a draft with a proposed 132-word abstract.
+Its original Markdown is preserved in the revision history. The expanded opening
+argument remains in the body as “The argument at a glance.” The source claims and
+references have not been fact-checked as part of the import.
+
+Every essay opens with **The idea in brief**, an editable abstract of at most
+180 words. The full reasoning follows a visible divider. The editor and published
+pages share the same Markdown renderer, including section anchors and footnotes.
+
+Files are ordinary Markdown, with media alongside them:
+
+| Location | Purpose |
+| --- | --- |
+| `content/drafts/<slug>.md` | Current working manuscript and YAML metadata |
+| `content/workbench/<slug>/comments.md` | Selected passages, notes and resolution state |
+| `content/workbench/<slug>/revisions/*.md` | Original import and prior saved manuscripts |
+| `content/workbench/<slug>/releases/*.md` | Earlier prepared releases |
+| `content/essay-assets/<slug>/` | Uploaded images, recordings and generated narration |
+| `content/essays/<slug>.md` | Explicitly prepared publication copy |
+
+The Studio binds only to the loopback interface. It is a local tool, not a hosted
+CMS. Only prepared essays and their referenced media enter `dist/`; comments,
+drafts, history and the editor are excluded. These files are still normal source
+files, so committing them shares them with anyone who can read the repository.
+
+### Narration
+
+In **Audio**, connect an ElevenLabs API key for the current server session, choose
+a voice from your library (or paste its ID), and give it a narrator credit. Brian,
+a deep male American voice, is the default. Use **Generate short preview** to judge it before generating
+the full essay. No browser speech synthesis is used. The integration uses
+ElevenLabs Multilingual v2 with a measured reading speed; voice selection determines
+the narrator's timbre. Generated audio is disclosed as AI narration.
+
+Alternatively, copy `.env.example` to `.env` or `.env.local` and fill in
+`ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` before starting the Studio.
+Both files are ignored by Git; `.env.local` takes precedence. The browser never receives a stored API key.
+Generation happens only when requested in the UI, sends the saved manuscript to
+ElevenLabs, and uses the account's credits. Voice browsing requires the key's
+`voices_read` permission; speech generation can also use a voice ID directly.
+The imported essay includes a Brian voice audition in its Audio panel.
+The provider integration follows the
+[ElevenLabs speech API](https://elevenlabs.io/docs/api-reference/text-to-speech/convert).
+
+Long essays become consecutive audio parts, with automatic advancement, a part
+selector, speed control and downloads. Completed parts are cached to allow retries
+without regenerating them. A text fingerprint flags outdated narration. You can
+also attach a human or AI recording (MP3, M4A, WAV or OGG, up to 60 MB), or remove
+audio before release. Images support PNG, JPEG, WebP, GIF and AVIF up to 12 MB.
+
 ## Preview
 
 With Node.js 22 or later:
@@ -26,9 +89,18 @@ Do not edit the generated `dist/` files.
 
 ## Publish an essay
 
+In the Studio, resolve open comments, review the abstract and full text, and use
+**Prepare release → Prepare final Markdown**. This validates the essay and writes
+`content/essays/<slug>.md` with `draft: false`. It neither commits nor deploys.
+Later edits remain in the working draft until another release is prepared.
+Run `npm run dev` to review the public page, then commit the final Markdown and
+its referenced assets and push when ready.
+
+For a file-only workflow:
+
 1. Copy `content/essays/_template.md` to a new file such as
    `content/essays/alignment-and-agency.md`.
-2. Fill in the title, description, publication date, author, and `action` in
+2. Fill in the title, description, summary, publication date, author, and `action` in
    the YAML front matter, then write the essay in Markdown. The action becomes
    a dedicated **From belief to action** section after the essay.
 3. Change `draft: true` to `draft: false` when ready. Run `npm run dev` to review
@@ -50,11 +122,16 @@ npm run check
 ```
 
 `npm test` checks numerical integration, bounds, 3D projection, fluid timing,
-and Markdown publishing (including draft exclusion and required actions).
+Markdown publishing, revision persistence, save conflicts, release isolation,
+safe rendering, footnotes, and narration generation with a mocked provider.
 `npm run test:browser` checks Chromium, mobile, and Safari/WebKit rendering, both hosting paths,
 links, assets, accessibility, pause/resume, visibility, resizing, reduced
 motion, dragging/resetting the 3D view, essay layouts, and static fallbacks.
-Playwright, axe, Marked, and YAML are development/build tools only.
+The browser suite also exercises the Studio in an isolated temporary workspace:
+editing, comments, revisions, images, audio uploads, export, release and local API
+access controls. It never changes the real essay. Playwright, axe, Marked, and YAML
+are development/build tools only. To use an already installed Chrome for the
+Chromium projects, set `PLAYWRIGHT_CHROMIUM_CHANNEL=chrome`.
 
 ## The butterfly
 

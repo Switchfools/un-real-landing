@@ -3,6 +3,7 @@ title: "Your essay title"
 description: "A short introduction to the belief this essay explores."
 date: "2026-09-23"
 author: "Nicolás Vergara"
+summary: "Start with the conclusion, the main reasons, and what follows. Keep this at 180 words or fewer."
 draft: true
 action: "Describe one concrete thing the reader can test, build, or change."
 ---
