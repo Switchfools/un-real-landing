@@ -1,0 +1,64 @@
+name: Validate and deploy Essay Studio
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths: ['server/**', 'studio/**', 'infra/**', 'scripts/**', 'tests/**', 'package*.json', '.github/workflows/studio.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: essay-studio-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run check
+      - run: npm run infra:synth
+      - uses: actions/upload-artifact@v4
+        with:
+          name: essay-studio
+          path: .build/
+          include-hidden-files: true
+  deploy:
+    needs: validate
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: essay-studio-production
+      url: ${{ vars.STUDIO_URL || 'https://du33fyw9w0t2v.cloudfront.net' }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: essay-studio
+          path: .build/
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.STUDIO_DEPLOY_ROLE || 'arn:aws:iam::885072868436:role/UnrealEssayStudio-GitHubDeploy' }}
+          aws-region: eu-central-1
+      - name: Update private application
+        env:
+          STUDIO_WEB_BUCKET: ${{ vars.STUDIO_WEB_BUCKET || 'unreal-essay-studio-web-885072868436-eu-central-1' }}
+          STUDIO_DISTRIBUTION: ${{ vars.STUDIO_DISTRIBUTION || 'ETHNSX8RN9BUZ' }}
+        run: |
+          cd .build/server
+          zip -q ../server.zip *.mjs
+          cd ../..
+          for studio_function in UnrealEssayStudio-API UnrealEssayStudio-Worker; do
+            studio_version=$(aws lambda update-function-code --function-name "$studio_function" --zip-file fileb://.build/server.zip --publish --query Version --output text)
+            aws lambda wait function-updated --function-name "$studio_function"
+            aws lambda update-alias --function-name "$studio_function" --name live --function-version "$studio_version"
+          done
+          aws s3 sync .build/studio/ "s3://$STUDIO_WEB_BUCKET/" --delete --cache-control no-cache
+          aws cloudfront create-invalidation --distribution-id "$STUDIO_DISTRIBUTION" --paths '/*'

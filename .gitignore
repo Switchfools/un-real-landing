@@ -3,6 +3,13 @@ node_modules/
 test-results/
 playwright-report/
 .cache/
+.build/
+.local/
+cdk.out/
+supabase/.temp/
+content/drafts/
+content/workbench/
+content/essay-assets/
 dist/
 .env*
 !.env.example

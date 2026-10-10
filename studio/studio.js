@@ -1,4 +1,6 @@
 import { setupAudio } from '/scripts/essay.js';
+import { initializeConnection, authorizationHeaders, oauthConsent } from '/connection.js';
+import { installReview } from '/proposals.js';
 
 const $ = id => document.getElementById(id);
 const fields = ['title', 'subtitle', 'author', 'date', 'description', 'action', 'status', 'summary', 'body'];
@@ -8,9 +10,10 @@ const normalize = text => text.replace(/\s+/g, ' ').trim();
 let current, dirty = false, editVersion = 0, renderVersion = 0;
 let renderTimer, noticeTimer, pendingImport, selected, revisionSource, audioHash = '', activeField = 'body', panel;
 let imagePosition = 0, audioPoll, renderedCharacters = 0, busySaving = false, uploading = false;
+let connection = { hosted: false }, review;
 
 async function api(path, options = {}) {
-  const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
+  const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...await authorizationHeaders(), ...options.headers } });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'The request could not be completed.');
   return data;
@@ -78,7 +81,7 @@ function fill(document) {
   for (const field of fields) $(field).value = field === 'body' ? document.body : document.metadata[field] || '';
   if (!$('status').value) $('status').value = 'Draft';
   $('filename').textContent = `${document.slug}.md`;
-  $('save-state').textContent = 'Saved on this computer'; $('save').disabled = true;
+  $('save-state').textContent = connection.hosted ? 'Saved to your private workspace' : 'Saved on this computer'; $('save').disabled = true;
   $('document').hidden = false; $('empty-state').hidden = true; dirty = false; editVersion++;
   updateCounts();
 }
@@ -94,13 +97,13 @@ async function openEssay(slug) {
       fill(recovery); dirty = true; $('save-state').textContent = 'Recovered unsaved edits'; $('save').disabled = false; notice('Recovered your unsaved browser copy. Save to write it to Markdown.');
     }
   } catch { /* Recovery is optional. */ }
-  history.replaceState({}, '', `/#${slug}`);
+  history.replaceState({}, '', `/${location.search}#${slug}`);
   await render(); await library();
   if (panel === 'history') await loadHistory();
   const job = await api(`/api/essays/${slug}/narration`);
   if (job.state === 'running' || job.state === 'complete') await pollNarration(slug);
   const sample = await api(`/api/essays/${slug}/narration-preview`);
-  $('voice-preview').innerHTML = sample ? `<p class="small-note">Voice preview · ${escape(sample.narrator)}</p><audio controls src="${escape(sample.tracks[0].src)}"></audio>` : '';
+  $('voice-preview').innerHTML = sample ? `<p class="small-note">Voice preview · ${escape(sample.narrator)}</p><audio controls src="${escape(sample.playbackUrl || sample.tracks[0].src)}"></audio>` : '';
   if (sample?.voice_id) { $('voice-id').value = sample.voice_id; $('narrator').value = sample.narrator; }
 }
 async function save() {
@@ -111,7 +114,7 @@ async function save() {
   try {
     const saved = await api(`/api/essays/${current.slug}`, { method: 'PUT', body: JSON.stringify({ ...current, ...collect() }) });
     current.revision = saved.revision; current.commentsRevision = saved.commentsRevision;
-    if (edits === editVersion) { current = saved; dirty = false; forget(); $('save-state').textContent = 'Saved on this computer'; }
+    if (edits === editVersion) { current = saved; dirty = false; forget(); $('save-state').textContent = connection.hosted ? 'Saved to your private workspace' : 'Saved on this computer'; }
     else { remember(); $('save-state').textContent = 'Unsaved changes'; }
     await library();
   } catch (error) { $('save-state').textContent = 'Not saved · retry or export'; throw error; }
@@ -210,6 +213,14 @@ async function upload(file) {
   if (file.size > 60_000_000) throw new Error('Files must be under 60 MB.');
   uploading = true;
   try {
+    if (connection.hosted) {
+      const checksum = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()))));
+      const ticket = await api(`/api/essays/${current.slug}/uploads`, { method: 'POST', body: JSON.stringify({ name: file.name, size: file.size, checksum }) });
+      const form = new FormData(); for (const [key, value] of Object.entries(ticket.fields)) form.append(key, value); form.append('file', file);
+      const response = await fetch(ticket.url, { method: 'POST', body: form });
+      if (!response.ok) throw new Error('The media upload failed. Please try again.');
+      return api(`/api/media/${ticket.id}/complete`, { method: 'POST', body: '{}' });
+    }
     const data = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result.split(',')[1]); reader.onerror = () => reject(new Error('Could not read that file.')); reader.readAsDataURL(file); });
     return await api(`/api/essays/${current.slug}/media`, { method: 'POST', body: JSON.stringify({ name: file.name, data }) });
   } finally { uploading = false; }
@@ -227,15 +238,22 @@ async function pollNarration(slug) {
     audioPoll = setTimeout(() => pollNarration(slug).catch(error => { notice(error.message, true); $('voice-sample').disabled = $('generate-audio').disabled = false; }), 1500);
   } else if (job.state === 'complete') {
     $('audio-progress').textContent = job.sample ? 'Preview ready. Listen before generating the essay.' : 'Narration attached. Save the draft to keep it.';
-    if (job.sample) $('voice-preview').innerHTML = `<audio controls src="${escape(job.audio.tracks[0].src)}"></audio>`;
+    if (job.sample) $('voice-preview').innerHTML = `<audio controls src="${escape(job.audio.playbackUrl || job.audio.tracks[0].src)}"></audio>`;
     else { current.metadata.audio = job.audio; change(); await render(); }
     await api(`/api/essays/${slug}/narration/ack`, { method: 'POST', body: '{}' });
-  } else if (job.state === 'error') { $('audio-progress').textContent = job.error; }
+  } else if (job.state === 'error') {
+    $('audio-progress').textContent = job.error;
+    if (connection.hosted && job.id) {
+      const retry = document.createElement('button'); retry.textContent = job.uncertain ? 'Retry part (may use more credits)' : 'Retry narration';
+      retry.addEventListener('click', handle(async () => { retry.disabled = true; await api(`/api/jobs/${job.id}/retry`, { method: 'POST', body: '{}' }); await pollNarration(slug); }));
+      $('audio-progress').append(document.createElement('br'), retry);
+    }
+  }
 }
 async function generate(sample) {
   await saveCurrent();
   const slug = current.slug;
-  const result = await api(`/api/essays/${slug}/narration`, { method: 'POST', body: JSON.stringify({ revision: current.revision, commentsRevision: current.commentsRevision, voiceId: $('voice-id').value, narrator: $('narrator').value, sample }) });
+  const result = await api(`/api/essays/${slug}/narration`, { method: 'POST', body: JSON.stringify({ requestId: crypto.randomUUID(), revision: current.revision, commentsRevision: current.commentsRevision, voiceId: $('voice-id').value, narrator: $('narrator').value, sample }) });
   if (result.state === 'running') await pollNarration(slug);
 }
 
@@ -327,7 +345,7 @@ $('restore-revision').addEventListener('click', handle(async () => {
   const comments = current.comments, base = current;
   fill({ ...base, ...result, metadata: Object.keys(result.metadata).length > 1 ? result.metadata : base.metadata, comments }); change(); $('revision-dialog').close(); await render(); notice('Revision restored in the editor. Save to make it the current draft.');
 }));
-$('release').addEventListener('click', () => { $('release-path').textContent = `content/essays/${current.slug}.md`; $('release-dialog').showModal(); });
+$('release').addEventListener('click', handle(async () => { if (review) return review.publish(); $('release-path').textContent = `content/essays/${current.slug}.md`; $('release-dialog').showModal(); }));
 $('confirm-release').addEventListener('click', handle(async () => {
   await saveCurrent();
   const result = await api(`/api/essays/${current.slug}/publish`, { method: 'POST', body: JSON.stringify({ revision: current.revision, commentsRevision: current.commentsRevision }) });
@@ -335,7 +353,7 @@ $('confirm-release').addEventListener('click', handle(async () => {
 }));
 $('audio-connect').addEventListener('submit', handle(async event => {
   event.preventDefault(); const data = await api('/api/audio-settings', { method: 'POST', body: JSON.stringify({ apiKey: $('api-key').value, voiceId: $('voice-id').value }) });
-  $('api-key').value = ''; $('audio-connection').textContent = data.connected ? 'Key configured for this local session' : 'Not connected';
+  $('api-key').value = ''; $('audio-connection').textContent = data.connected ? (connection.hosted ? 'Key stored securely for your workspace' : 'Key configured for this local session') : 'Not connected';
 }));
 $('load-voices').addEventListener('click', handle(async () => {
   const voices = await api('/api/voices'); $('voice-list').hidden = false;
@@ -355,6 +373,16 @@ $('audio-file').addEventListener('change', handle(async () => {
 $('remove-audio').addEventListener('click', () => { delete current.metadata.audio; change(); renderAudio(); });
 
 try {
+  connection = await initializeConnection();
+  if (connection.hosted) {
+    document.querySelector('.local-label').textContent = connection.local ? 'Hosted workflow · local preview' : 'Private workspace';
+    document.querySelector('.storage-note').textContent = 'Your private writing workspace. Only confirmed releases reach the public site.';
+    $('api-key').placeholder = 'Stored in your private AWS secret';
+    $('release').textContent = 'Publish ↗';
+    await api('/api/me');
+    review = installReview({ api, notice, handle, saveCurrent, openEssay, library, getCurrent: () => current });
+    await oauthConsent(api);
+  }
   const essays = await library();
   const requested = location.hash.slice(1);
   if (essays.length) await openEssay(essays.some(essay => essay.slug === requested) ? requested : essays[0].slug);

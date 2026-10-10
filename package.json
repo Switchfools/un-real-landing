@@ -7,20 +7,49 @@
   "engines": {
     "node": ">=22"
   },
+  "overrides": {
+    "aws-cdk-lib": {
+      "brace-expansion": "5.0.12"
+    }
+  },
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "npm run build && node scripts/serve.mjs",
     "studio": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/studio.mjs",
+    "build:studio": "node scripts/build-studio.mjs",
+    "studio:hosted-local": "npm run build:studio && node scripts/serve-hosted-studio.mjs",
+    "infra:synth": "npm run build:studio && cdk synth --app 'node infra/app.mjs' --quiet",
+    "infra:deploy": "cdk deploy --app 'node infra/app.mjs'",
     "test": "node --test tests/*.test.mjs",
-    "test:browser": "npm run build && playwright test",
+    "test:browser": "npm run build && npm run build:studio && playwright test",
     "check": "npm test && npm run test:browser",
     "assets": "node scripts/generate-assets.mjs",
     "assets:check": "node scripts/generate-assets.mjs --check"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
+    "@electric-sql/pglite": "0.5.8",
     "@playwright/test": "1.63.0",
+    "aws-cdk": "2.1145.0",
+    "aws-cdk-lib": "2.273.0",
+    "constructs": "10.8.1",
+    "esbuild": "0.28.2",
     "marked": "18.0.14",
     "yaml": "2.9.1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1147.0",
+    "@aws-sdk/client-secrets-manager": "3.1147.0",
+    "@aws-sdk/client-sqs": "3.1147.0",
+    "@aws-sdk/s3-presigned-post": "3.1147.0",
+    "@aws-sdk/s3-request-presigner": "3.1147.0",
+    "@hono/node-server": "2.1.4",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@supabase/supabase-js": "2.117.3",
+    "diff": "9.0.0",
+    "hono": "4.13.13",
+    "jose": "6.2.12",
+    "postgres": "3.4.9",
+    "zod": "4.6.5"
   }
 }

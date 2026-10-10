@@ -33,6 +33,7 @@ export async function createStudioServer({ contentRoot = process.env.STUDIO_CONT
       const path = decodeURIComponent(url.pathname);
       if (path.startsWith('/api/')) {
         const method = request.method;
+        if (path === '/api/config' && method === 'GET') return send({ hosted: false });
         if (!['GET', 'POST', 'PUT'].includes(method)) throw fail('Method not allowed.', 405);
         if (method !== 'GET' && request.headers.origin !== `http://${host}`) throw fail('A matching local Origin is required.', 403);
         if (path === '/api/essays' && method === 'GET') return send(await store.list());

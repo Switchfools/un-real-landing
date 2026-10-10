@@ -12,11 +12,11 @@ async function create(page, request, label = 'draft') {
   return slug;
 }
 
-test('Studio displays the real draft, abstract, footnotes and responsive reader without errors', async ({ page }, info) => {
+test('Studio displays an isolated draft, abstract, footnotes and responsive reader without errors', async ({ page }, info) => {
   const errors = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto(`${base}/#the-imperfect-wish`);
-  await expect(page.locator('#preview h1')).toHaveText('The Imperfect Wish');
-  await expect(page.locator('#summary-count')).toHaveText('132 / 180 words');
+  await page.goto(`${base}/#a-considered-idea`);
+  await expect(page.locator('#preview h1')).toHaveText('A considered idea');
+  await expect(page.locator('#summary-count')).toHaveText('5 / 180 words');
   await expect(page.locator('#preview #note-7')).toBeAttached();
   await expect(page.locator('#preview')).not.toContainText('[^1]');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

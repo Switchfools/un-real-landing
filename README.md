@@ -12,6 +12,13 @@ load matching files after a deployment instead of mixing cached releases.
 
 ## Essay Studio
 
+The private hosted writing room is at **https://du33fyw9w0t2v.cloudfront.net**.
+ChatGPT proposes changes; you review a versioned diff and approve it into a draft.
+Publication requires a separate final review. The public site stays on GitHub Pages.
+See [hosted setup, ChatGPT connection, deployment and recovery](docs/essay-studio.md).
+
+The filesystem adapter remains available for local writing:
+
 ```sh
 npm ci
 npm run studio
@@ -23,10 +30,6 @@ revisions, and audio. Use **Save draft** or Cmd/Ctrl+S to write to disk. Unsaved
 edits have browser recovery when local storage is available. No database or
 cloud account is needed to write.
 
-**The Imperfect Wish** is imported as a draft with a proposed 132-word abstract.
-Its original Markdown is preserved in the revision history. The expanded opening
-argument remains in the body as “The argument at a glance.” The source claims and
-references have not been fact-checked as part of the import.
 
 Every essay opens with **The idea in brief**, an editable abstract of at most
 180 words. The full reasoning follows a visible divider. The editor and published
@@ -43,10 +46,11 @@ Files are ordinary Markdown, with media alongside them:
 | `content/essay-assets/<slug>/` | Uploaded images, recordings and generated narration |
 | `content/essays/<slug>.md` | Explicitly prepared publication copy |
 
-The Studio binds only to the loopback interface. It is a local tool, not a hosted
-CMS. Only prepared essays and their referenced media enter `dist/`; comments,
-drafts, history and the editor are excluded. These files are still normal source
-files, so committing them shares them with anyone who can read the repository.
+The filesystem Studio binds only to the loopback interface. The hosted Studio
+uses private Postgres and S3 instead. Only prepared essays and their referenced media enter `dist/`; comments,
+drafts, history and the editor are excluded. Working files and private media are now ignored by Git after verified migration.
+Local originals remain on this computer; existing Git history is unchanged.
+Only explicitly published Markdown and referenced assets should be committed.
 
 ### Narration
 
@@ -63,7 +67,6 @@ Both files are ignored by Git; `.env.local` takes precedence. The browser never 
 Generation happens only when requested in the UI, sends the saved manuscript to
 ElevenLabs, and uses the account's credits. Voice browsing requires the key's
 `voices_read` permission; speech generation can also use a voice ID directly.
-The imported essay includes a Brian voice audition in its Audio panel.
 The provider integration follows the
 [ElevenLabs speech API](https://elevenlabs.io/docs/api-reference/text-to-speech/convert).
 
@@ -89,7 +92,12 @@ Do not edit the generated `dist/` files.
 
 ## Publish an essay
 
-In the Studio, resolve open comments, review the abstract and full text, and use
+In the hosted Studio, **Publish** opens the final release diff and preview.
+**Publish reviewed release** commits its frozen Markdown and media through the
+repository-scoped GitHub App. Watch **Publication status** for the matching Pages
+deployment; approval into a draft does not publish it.
+
+In the local filesystem Studio, resolve open comments, review the abstract and full text, and use
 **Prepare release → Prepare final Markdown**. This validates the essay and writes
 `content/essays/<slug>.md` with `draft: false`. It neither commits nor deploys.
 Later edits remain in the working draft until another release is prepared.
@@ -129,8 +137,8 @@ links, assets, accessibility, pause/resume, visibility, resizing, reduced
 motion, dragging/resetting the 3D view, essay layouts, and static fallbacks.
 The browser suite also exercises the Studio in an isolated temporary workspace:
 editing, comments, revisions, images, audio uploads, export, release and local API
-access controls. It never changes the real essay. Playwright, axe, Marked, and YAML
-are development/build tools only. To use an already installed Chrome for the
+access controls. It never changes the real essay. The public website has no runtime dependencies. The private backend bundles
+its own dependencies, including the shared Markdown renderer. To use an already installed Chrome for the
 Chromium projects, set `PLAYWRIGHT_CHROMIUM_CHANNEL=chrome`.
 
 ## The butterfly
@@ -176,7 +184,8 @@ waist against it. See [the Lorenz parameters](https://blogs.mathworks.com/cleve/
    email link, and mobile layout. The deployment URL also appears in the
    `github-pages` environment.
 
-No application secrets are required. A failed check prevents deployment; the
+The public Pages workflow needs no application secrets. The private Studio uses
+its separate OIDC deployment workflow and AWS Secrets Manager configuration. A failed check prevents deployment; the
 previous Pages deployment stays live. To roll back, revert the relevant commit
 on `main` and let the workflow redeploy.
 

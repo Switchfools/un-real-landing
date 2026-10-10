@@ -17,5 +17,6 @@ export default defineConfig({
   webServer: [
     { command: 'node scripts/serve.mjs', url: 'http://127.0.0.1:4173', reuseExistingServer: !process.env.CI },
     { command: 'node tests/serve-studio.mjs', url: 'http://127.0.0.1:4311', reuseExistingServer: false },
+    { command: 'node tests/serve-hosted.mjs', url: 'http://127.0.0.1:4312', reuseExistingServer: false },
   ],
 });
