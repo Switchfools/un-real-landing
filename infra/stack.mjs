@@ -3,8 +3,9 @@ import { Stack, Duration, RemovalPolicy, CfnOutput, Tags, Fn,
   aws_lambda as lambda, aws_lambda_event_sources as sources, aws_apigatewayv2 as apigw,
   aws_iam as iam, aws_sqs as sqs, aws_logs as logs, aws_secretsmanager as secrets,
   aws_events as events, aws_events_targets as targets, aws_cloudwatch as cloudwatch,
-  aws_cloudwatch_actions as actions, aws_sns as sns, aws_budgets as budgets,
+  aws_cloudwatch_actions as actions, aws_sns as sns, aws_budgets as budgets, aws_certificatemanager as acm,
 } from 'aws-cdk-lib';
+import { studioDomain, studioCertificateArn, studioRoutes } from './domain.mjs';
 
 export class EssayStudioStack extends Stack {
   constructor(scope, id, props) {
@@ -17,7 +18,7 @@ export class EssayStudioStack extends Stack {
     const publisherSecret = new secrets.Secret(this, 'Publisher', { secretName: 'unreal/essay-studio/github', generateSecretString: { secretStringTemplate: '{}', generateStringKey: 'setupNonce' }, removalPolicy: RemovalPolicy.RETAIN });
     const dlq = new sqs.Queue(this, 'DeadLetters', { queueName: 'UnrealEssayStudio-dead.fifo', fifo: true, enforceSSL: true, retentionPeriod: Duration.days(14) });
     const queue = new sqs.Queue(this, 'Jobs', { queueName: 'UnrealEssayStudio-jobs.fifo', fifo: true, enforceSSL: true, visibilityTimeout: Duration.minutes(32), deadLetterQueue: { queue: dlq, maxReceiveCount: 3 } });
-    const environment = { NODE_ENV: 'production', RUNTIME_SECRET_ARN: runtimeSecret.secretArn, AUDIO_SECRET_ARN: audioSecret.secretArn, PUBLISHER_SECRET_ARN: publisherSecret.secretArn, MEDIA_BUCKET: media.bucketName, BACKUP_BUCKET: backup.bucketName, QUEUE_URL: queue.queueUrl };
+    const environment = { NODE_ENV: 'production', STUDIO_ORIGIN: `https://${studioDomain}`, RUNTIME_SECRET_ARN: runtimeSecret.secretArn, AUDIO_SECRET_ARN: audioSecret.secretArn, PUBLISHER_SECRET_ARN: publisherSecret.secretArn, MEDIA_BUCKET: media.bucketName, BACKUP_BUCKET: backup.bucketName, QUEUE_URL: queue.queueUrl };
     const makeFunction = (name, timeout, memorySize) => {
       const logGroup = new logs.LogGroup(this, `${name}Logs`, { logGroupName: `/aws/lambda/UnrealEssayStudio-${name}`, retention: logs.RetentionDays.TWO_WEEKS, removalPolicy: RemovalPolicy.RETAIN });
       const role = new iam.Role(this, `${name}Role`, { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') }); logGroup.grantWrite(role);
@@ -37,12 +38,14 @@ export class EssayStudioStack extends Stack {
     api.alias.addPermission('Gateway', { principal: new iam.ServicePrincipal('apigateway.amazonaws.com'), sourceArn: `arn:aws:execute-api:${this.region}:${this.account}:${http.ref}/*` });
     const apiOrigin = new origins.HttpOrigin(Fn.select(2, Fn.split('/', http.attrApiEndpoint)));
     const apiBehavior = { origin: apiOrigin, viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS, allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL, cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER };
-    const rewrite = new cloudfront.Function(this, 'StudioRoutes', { code: cloudfront.FunctionCode.fromInline("function handler(event) { var request = event.request; if (request.uri === '/' || request.uri === '/auth/callback' || request.uri === '/oauth/consent') request.uri = '/index.html'; return request; }") });
-    const headers = new cloudfront.ResponseHeadersPolicy(this, 'StudioHeaders', { securityHeadersBehavior: {
+    const rewrite = new cloudfront.Function(this, 'StudioRoutes', { code: cloudfront.FunctionCode.fromInline(studioRoutes) });
+    const headers = new cloudfront.ResponseHeadersPolicy(this, 'StudioHeaders', { customHeadersBehavior: { customHeaders: [{ header: 'X-Robots-Tag', value: 'noindex, nofollow', override: true }] }, securityHeadersBehavior: {
       contentSecurityPolicy: { contentSecurityPolicy: "default-src 'self'; connect-src 'self' https://*.supabase.co https://*.amazonaws.com; img-src 'self' blob: https://*.amazonaws.com; media-src 'self' blob: https://*.amazonaws.com; style-src 'self'; script-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'", override: true },
       contentTypeOptions: { override: true }, referrerPolicy: { referrerPolicy: cloudfront.HeadersReferrerPolicy.NO_REFERRER, override: true }, strictTransportSecurity: { accessControlMaxAge: Duration.days(365), includeSubdomains: true, override: true },
     } });
+    apiBehavior.responseHeadersPolicy = headers;
     const distribution = new cloudfront.Distribution(this, 'Studio', { defaultRootObject: 'index.html', priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
+      domainNames: [studioDomain], certificate: acm.Certificate.fromCertificateArn(this, 'StudioCertificate', studioCertificateArn),
       defaultBehavior: { origin: origins.S3BucketOrigin.withOriginAccessControl(web), viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS, cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, responseHeadersPolicy: headers, functionAssociations: [{ eventType: cloudfront.FunctionEventType.VIEWER_REQUEST, function: rewrite }] },
       additionalBehaviors: { '/api/*': apiBehavior, '/mcp': apiBehavior, '/.well-known/*': apiBehavior },
     });
@@ -60,6 +63,6 @@ export class EssayStudioStack extends Stack {
     web.grantReadWrite(deployRole);
     deployRole.addToPolicy(new iam.PolicyStatement({ actions: ['lambda:UpdateFunctionCode', 'lambda:GetFunctionConfiguration', 'lambda:GetFunction', 'lambda:PublishVersion', 'lambda:UpdateAlias', 'lambda:GetAlias'], resources: [api.fn.functionArn, `${api.fn.functionArn}:*`, worker.fn.functionArn, `${worker.fn.functionArn}:*`] }));
     deployRole.addToPolicy(new iam.PolicyStatement({ actions: ['cloudfront:CreateInvalidation'], resources: [distribution.distributionArn] }));
-    for (const [name, value] of Object.entries({ StudioURL: `https://${distribution.distributionDomainName}`, MCPURL: `https://${distribution.distributionDomainName}/mcp`, DistributionID: distribution.distributionId, WebBucket: web.bucketName, MediaBucket: media.bucketName, BackupBucket: backup.bucketName, RuntimeSecretArn: runtimeSecret.secretArn, AudioSecretArn: audioSecret.secretArn, PublisherSecretArn: publisherSecret.secretArn, DeployRoleArn: deployRole.roleArn, AlertTopicArn: alerts.topicArn, APIName: api.fn.functionName, WorkerName: worker.fn.functionName })) new CfnOutput(this, name, { value });
+    for (const [name, value] of Object.entries({ StudioURL: `https://${studioDomain}`, MCPURL: `https://${studioDomain}/mcp`, CloudFrontURL: `https://${distribution.distributionDomainName}`, DistributionID: distribution.distributionId, WebBucket: web.bucketName, MediaBucket: media.bucketName, BackupBucket: backup.bucketName, RuntimeSecretArn: runtimeSecret.secretArn, AudioSecretArn: audioSecret.secretArn, PublisherSecretArn: publisherSecret.secretArn, DeployRoleArn: deployRole.roleArn, AlertTopicArn: alerts.topicArn, APIName: api.fn.functionName, WorkerName: worker.fn.functionName })) new CfnOutput(this, name, { value });
   }
 }

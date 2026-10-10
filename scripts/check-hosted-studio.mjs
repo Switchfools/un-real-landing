@@ -5,6 +5,13 @@ const outputs = JSON.parse(await readFile('.local/essay-studio/aws-outputs.json'
 const origin = outputs.StudioURL;
 const configResponse = await fetch(`${origin}/api/config`), config = await configResponse.json();
 assert.equal(configResponse.status, 200); assert.equal(config.hosted, true); assert.equal(config.local, false);
+assert.equal(config.origin, origin);
+assert.match(configResponse.headers.get('x-robots-tag') || '', /noindex/);
+if (outputs.CloudFrontURL) {
+  const redirect = await fetch(`${outputs.CloudFrontURL}/?proposal=test&version=2`, { redirect: 'manual' });
+  assert.equal(redirect.status, 301);
+  assert.equal(redirect.headers.get('location'), `${origin}/?proposal=test&version=2`);
+}
 for (const path of ['/api/essays', '/api/connections', '/mcp']) {
   const response = await fetch(origin + path); assert.equal(response.status, 401, path);
   if (path === '/mcp') assert.match(response.headers.get('www-authenticate'), /resource_metadata=/);

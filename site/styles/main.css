@@ -160,6 +160,18 @@ h2 { font-size: clamp(30px, 3.15vw, 44px); font-weight: 400; line-height: 1.22; 
 .essay-page { max-width: 760px; margin: 0 auto; padding-block: 64px 92px; }
 .essay-back { font-family: var(--mono); font-size: 11px; color: var(--muted); display: inline-block; padding-block: 10px; margin-bottom: 36px; }
 .essay-back:hover { color: var(--accent); }
+.essays-archive { padding-block: 80px 100px; }
+.essays-archive h1 { max-width: 920px; font-size: clamp(36px, 5.5vw, 76px); line-height: 1.14; letter-spacing: -.04em; font-weight: 400; }
+.essays-archive h1 em { color: var(--accent); font-style: normal; }
+.archive-intro { max-width: 680px; color: var(--muted); line-height: 1.8; margin-block: 28px 48px; }
+.essay-share, .essay-mission, .more-essays { max-width: 1080px; margin-inline: auto; padding-block: 38px; border-top: 1px solid var(--line); }
+.essay-share h2, .essay-mission h2, .more-essays h2 { font-size: clamp(22px, 3vw, 32px); line-height: 1.3; }
+.essay-share p, .essay-mission p { max-width: 740px; color: var(--muted); line-height: 1.8; }
+.share-links { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; margin-block: 24px; }
+.share-links a, .share-links button { font-size: 13px; color: var(--accent); }
+.share-links button { padding: 10px 16px; border: 1px solid var(--line); border-radius: 3px; background: transparent; cursor: pointer; }
+.essay-share [role="status"] { min-height: 1.8em; font-size: 13px; }
+.site-footer > a:not(.footer-brand) { color: var(--muted); font: 11px var(--mono); }
 .essay-header { margin-bottom: 46px; padding-bottom: 32px; border-bottom: 1px solid var(--line); }
 .essay-header .eyebrow { margin-bottom: 22px; }
 .essay-header h1 { font-size: clamp(36px, 5vw, 60px); line-height: 1.12; letter-spacing: -2px; overflow-wrap: anywhere; }

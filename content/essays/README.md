@@ -3,6 +3,11 @@
 Write here in Markdown. GitHub Actions builds the essays into static pages,
 adds them to the homepage, and deploys them with the site.
 
+The canonical public URL is `https://un-real.ai/essays/<slug>/`. Publishing also
+updates the essay index, sitemap and RSS feed and generates a sharing image from
+the title and author. Write a distinct, accurate `description`; it appears in
+search and social metadata. See [the SEO and distribution guide](../../docs/seo.md).
+
 For iterative writing, run `npm run studio` and open http://127.0.0.1:4310/.
 Working copies live in `content/drafts/`. **Prepare release** creates a separate
 validated copy in this directory, without deploying it. Comments and previous

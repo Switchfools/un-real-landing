@@ -7,12 +7,16 @@ turns Markdown into static HTML and writes the deployable website to `dist/`.
 The published site has no runtime dependencies. The previous commercial site
 remains available in Git history before the rewrite.
 
+Public website: **https://un-real.ai/**. Published essays receive canonical URLs,
+structured article metadata, individual sharing cards, a sitemap and an RSS feed.
+See [SEO, Search Console setup and the publishing guide](docs/seo.md).
+
 The build gives CSS and JavaScript content-based filenames so browsers always
 load matching files after a deployment instead of mixing cached releases.
 
 ## Essay Studio
 
-The private hosted writing room is at **https://du33fyw9w0t2v.cloudfront.net**.
+The private hosted writing room is at **https://studio.un-real.ai**.
 ChatGPT proposes changes; you review a versioned diff and approve it into a draft.
 Publication requires a separate final review. The public site stays on GitHub Pages.
 See [hosted setup, ChatGPT connection, deployment and recovery](docs/essay-studio.md).
@@ -180,7 +184,7 @@ waist against it. See [the Lorenz parameters](https://blogs.mathworks.com/cleve/
    checks, uploads only `dist/`, and deploys it. Pull requests run validation only.
    Manual dispatch on `main` can retry a deployment.
 3. Confirm the **Validate and deploy Pages** workflow succeeds, then visit
-   https://switchfools.github.io/un-real-landing/ and check the logo, navigation,
+   https://un-real.ai/ and check the logo, navigation,
    email link, and mobile layout. The deployment URL also appears in the
    `github-pages` environment.
 
@@ -189,15 +193,16 @@ its separate OIDC deployment workflow and AWS Secrets Manager configuration. A f
 previous Pages deployment stays live. To roll back, revert the relevant commit
 on `main` and let the workflow redeploy.
 
-### Connect un-real.ai later
+### Public domain
 
-Verify domain ownership in GitHub, add `un-real.ai` in the repository's Pages
-settings, then configure your DNS provider using
+The repository's Pages settings use `un-real.ai` with **Enforce HTTPS** enabled.
+The original `https://switchfools.github.io/un-real-landing/` address redirects
+to the public domain. Maintain the DNS records using
 [GitHub's custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site).
-Enable HTTPS once available. Update the canonical URL and absolute Open Graph
-URLs in `site/index.html` to `https://un-real.ai/`; essay metadata uses that
-canonical base automatically. Relative assets support either hosting location.
-Actions-based deployment does not require a CNAME file.
+`scripts/seo.mjs` defines the canonical base for the homepage, essay index,
+articles, sharing metadata, sitemap and RSS feed. Relative assets also support
+repository-subpath previews. See [discovery and sharing](docs/seo.md) for Google
+Search Console setup and publishing guidance.
 
 ## Content
 

@@ -25,3 +25,28 @@ export function setupAudio(root = document) {
   });
 }
 setupAudio();
+
+export function setupSharing(root = document) {
+  root.querySelectorAll('[data-essay-share]').forEach(section => {
+    if (section.dataset.ready) return;
+    section.dataset.ready = 'true';
+    const status = section.querySelector('[data-share-status]');
+    const copy = section.querySelector('[data-copy-link]');
+    if (navigator.clipboard?.writeText) {
+      copy.hidden = false;
+      copy.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(section.dataset.url); status.textContent = 'Link copied. Share it with someone who will put the idea to work.'; }
+        catch { status.textContent = 'Copy the address from Permanent link to share this essay.'; }
+      });
+    }
+    const share = section.querySelector('[data-native-share]');
+    if (navigator.share) {
+      share.hidden = false;
+      share.addEventListener('click', async () => {
+        try { await navigator.share({ title: section.dataset.title, url: section.dataset.url }); }
+        catch (error) { if (error.name !== 'AbortError') status.textContent = 'Use Copy link or Permanent link to share this essay.'; }
+      });
+    }
+  });
+}
+setupSharing();

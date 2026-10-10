@@ -14,6 +14,7 @@ export async function runtime() {
   if (services) return services;
   const secrets = new Secrets({ runtimeSecretArn: process.env.RUNTIME_SECRET_ARN, audioSecretArn: process.env.AUDIO_SECRET_ARN, publisherSecretArn: process.env.PUBLISHER_SECRET_ARN });
   const config = await secrets.get(secrets.runtimeSecretArn);
+  if (process.env.STUDIO_ORIGIN) config.origin = process.env.STUDIO_ORIGIN;
   for (const key of ['databaseUrl', 'origin', 'supabaseUrl', 'supabasePublishableKey', 'supabaseSecretKey', 'ownerGithubId']) if (!config[key]) throw new Error('Studio configuration is incomplete');
   const db = postgresDatabase(config.databaseUrl), workspace = new Workspace(db, config);
   const media = new MediaService(workspace, new S3Media(process.env.MEDIA_BUCKET, config.origin));

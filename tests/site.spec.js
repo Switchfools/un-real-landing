@@ -214,8 +214,11 @@ test('published Markdown essays have working Pages links and an action section',
   await buildSite({ contentDir: resolve('tests/fixtures/essays'), outDir });
   const home = await readFile(resolve(outDir, 'index.html'), 'utf8');
   const essay = await readFile(resolve(outDir, 'essays/from-belief-to-action/index.html'), 'utf8');
+  const archive = await readFile(resolve(outDir, 'essays/index.html'), 'utf8');
   await page.route('http://127.0.0.1:4173/un-real-landing/', route => route.fulfill({ contentType: 'text/html', body: home }));
   await page.route('**/essays/from-belief-to-action/', route => route.fulfill({ contentType: 'text/html', body: essay }));
+  await page.route('http://127.0.0.1:4173/un-real-landing/essays/', route => route.fulfill({ contentType: 'text/html', body: archive }));
+  await page.addInitScript(() => { Object.defineProperty(navigator, 'clipboard', { value: { writeText: async value => { window.copiedEssayUrl = value; } } }); });
   await page.goto('/un-real-landing/#essays');
   await page.locator('.essay-link').click();
   await expect(page).toHaveURL(/\/un-real-landing\/essays\/from-belief-to-action\/$/);
@@ -223,9 +226,14 @@ test('published Markdown essays have working Pages links and an action section',
   await expect(page.locator('.essay-prose strong')).toHaveText('testable commitment');
   await expect(page.locator('.essay-action')).toContainText('Write down one assumption and test it this week.');
   await expect(page.locator('.essay-action a')).toHaveAttribute('href', 'mailto:contact-us@un-real.ai');
+  await page.getByRole('button', { name: 'Copy link' }).click();
+  expect(await page.evaluate(() => window.copiedEssayUrl)).toBe('https://un-real.ai/essays/from-belief-to-action/');
+  await expect(page.locator('[data-share-status]')).toContainText('Link copied');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath('essay.png'), fullPage: true });
   await page.getByRole('link', { name: 'All essays' }).click();
-  await expect(page).toHaveURL(/\/un-real-landing\/#essays$/);
+  await expect(page).toHaveURL(/\/un-real-landing\/essays\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('AI alignment.');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

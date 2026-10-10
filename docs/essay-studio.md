@@ -6,15 +6,28 @@ Saving a comment never calls a model. No OpenAI API key is required.
 
 | Service | Address |
 | --- | --- |
-| Studio | https://du33fyw9w0t2v.cloudfront.net |
-| MCP | https://du33fyw9w0t2v.cloudfront.net/mcp |
-| Published website | https://switchfools.github.io/un-real-landing/ |
+| Studio | https://studio.un-real.ai |
+| MCP | https://studio.un-real.ai/mcp |
+| Published website | https://un-real.ai/ |
 | Supabase | `yvbpaajyfruqxtelsfoo`, project `unreal-essay-studio` |
 | AWS | `UnrealEssayStudio`, account `885072868436`, `eu-central-1` |
 
 The initial owner is GitHub account `Switchfools`, numeric identity `37335567`.
 Only that provider identity can open the workspace. Changing the display name or
 user-editable profile metadata cannot grant access. Collaboration is out of scope.
+
+The custom domain is configured in `infra/domain.mjs`. Its DNS-validated ACM
+certificate is in `us-east-1`, as CloudFront requires; application resources stay
+in `eu-central-1`. GoDaddy's `studio` CNAME points to
+`du33fyw9w0t2v.cloudfront.net`. Keep its ACM validation CNAME for renewal.
+The original CloudFront browser address redirects to `studio.un-real.ai`, keeping
+proposal and OAuth query parameters. Sign in again on the new domain; browser
+sessions and unsaved recovery copies are scoped to their original host.
+Reconnect ChatGPT using `https://studio.un-real.ai/mcp` if it was connected to the
+old address. Runtime origin, the Supabase site/redirect URL, and the OAuth audience
+hook must agree when changing domains; the GitHub provider callback remains the
+Supabase `/auth/v1/callback` URL. Studio sends `noindex, nofollow` while the public
+mission and published essays stay indexable at `un-real.ai`.
 
 ## Everyday writing and review
 
@@ -56,7 +69,7 @@ release or approval.
 ## Connect ChatGPT
 
 In ChatGPT's Plugins area, choose **+ → Add custom MCP server**. Set the URL to
-`https://du33fyw9w0t2v.cloudfront.net/mcp` and choose OAuth. Supabase supports dynamic
+`https://studio.un-real.ai/mcp` and choose OAuth. Supabase supports dynamic
 client registration, so this connection uses its own OAuth client; do not enter
 the GitHub sign-in secret. Follow the GitHub sign-in and Studio consent screen.
 Allow reading, and optionally proposals. Account/workspace controls may affect
@@ -150,7 +163,7 @@ Supabase setup uses an authenticated CLI and a **separate project**:
 SUPABASE_CLI=../karteria/node_modules/.bin/supabase \
   python3 scripts/setup-studio.py create --org vyyqwuyllbmupczajxyb --owner 37335567
 SUPABASE_CLI=../karteria/node_modules/.bin/supabase \
-  python3 scripts/setup-studio.py configure --origin https://du33fyw9w0t2v.cloudfront.net
+  python3 scripts/setup-studio.py configure --origin https://studio.un-real.ai
 node scripts/setup-studio-github.mjs
 ```
 
@@ -279,5 +292,5 @@ Check current [Supabase pricing](https://supabase.com/pricing),
 [Secrets Manager pricing](https://aws.amazon.com/secrets-manager/pricing/) and
 [Lambda pricing](https://aws.amazon.com/lambda/pricing/) before changing capacity.
 
-Custom domains, public registration, collaborator roles, automatic model calls,
+Public registration, collaborator roles, automatic model calls,
 and an in-Studio AI chat are deliberately outside this version.

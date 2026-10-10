@@ -78,7 +78,7 @@ def configure(args):
     origin = args.origin.rstrip('/')
     url = urlsplit(origin)
     if url.scheme != 'https' or not url.hostname or url.path or url.query or url.fragment:
-        raise RuntimeError('Supply the CloudFront HTTPS origin without a path.')
+        raise RuntimeError('Supply the Studio HTTPS origin without a path.')
     existing = query("select rolcanlogin from pg_roles where rolname='essay_studio_api'")
     if existing and not RUNTIME.exists():
         raise RuntimeError('Runtime role exists: restore runtime.json from Secrets Manager before reconfiguration.')

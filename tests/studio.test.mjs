@@ -78,7 +78,7 @@ test('only final Markdown and referenced final assets enter the website', async 
   const doc = document(); doc.body += '\n![Diagram](../../assets/essays/wish/used.png)';
   const draft = await store.create('wish', serializeEssay(doc)); await store.publish('wish', draft);
   const outDir = join(root, 'dist'); await buildSite({ contentDir: join(root, 'essays'), outDir, assetsDir });
-  assert.deepEqual(await readdir(join(outDir, 'essays')), ['wish']);
+  assert.deepEqual(await readdir(join(outDir, 'essays')), ['index.html', 'wish']);
   assert.deepEqual(await readdir(join(outDir, 'assets/essays/wish')), ['used.png']);
   assert.ok(!(await readdir(outDir)).includes('studio')); assert.ok(!(await readdir(outDir)).includes('workbench'));
 });

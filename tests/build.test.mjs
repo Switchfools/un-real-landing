@@ -25,7 +25,8 @@ test('empty content produces an honest empty section without template or drafts'
   assert.equal(await buildSite(options), 0);
   const html = await readFile(join(options.outDir, 'index.html'), 'utf8');
   assert.match(html, /Essays will be published here/);
-  assert.ok(!(await readdir(options.outDir)).includes('essays'));
+  assert.deepEqual(await readdir(join(options.outDir, 'essays')), ['index.html']);
+  for (const path of ['sitemap.xml', 'feed.xml', 'essays/index.html']) assert.doesNotMatch(await readFile(join(options.outDir, path), 'utf8'), /private-draft|_template/);
 });
 
 test('published essays render Markdown, escaped metadata, dates and action, newest first', async t => {
@@ -42,11 +43,12 @@ test('published essays render Markdown, escaped metadata, dates and action, newe
   assert.match(page, /From belief to action/);
   assert.match(page, /Test one assumption this week/);
   assert.match(page, /href="\.\.\/\.\.\/#essays"/);
-  assert.match(page, /https:\/\/switchfools.github.io\/un-real-landing\/essays\/newer\//);
+  assert.match(page, /https:\/\/un-real.ai\/essays\/newer\//);
   // Unpublishing must remove old output, not leave a discoverable stale page.
   await writeFile(join(options.contentDir, 'newer.md'), essay({ draft: true }));
   await buildSite(options);
-  assert.deepEqual(await readdir(join(options.outDir, 'essays')), ['older']);
+  assert.deepEqual((await readdir(join(options.outDir, 'essays'))).sort(), ['index.html', 'older']);
+  for (const path of ['sitemap.xml', 'feed.xml', 'essays/index.html']) assert.doesNotMatch(await readFile(join(options.outDir, path), 'utf8'), /essays\/newer\//);
 });
 
 test('a published essay needs a concrete action and valid publication date', async t => {

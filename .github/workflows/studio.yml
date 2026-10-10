@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: essay-studio-production
-      url: ${{ vars.STUDIO_URL || 'https://du33fyw9w0t2v.cloudfront.net' }}
+      url: ${{ vars.STUDIO_URL || 'https://studio.un-real.ai' }}
     permissions:
       contents: read
       id-token: write
