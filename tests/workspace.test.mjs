@@ -96,4 +96,11 @@ test('MCP exposes proposals but never approval, release or narration; API reject
   assert.ok(data.result.tools.some(tool => tool.name === 'propose_essay'));
   assert.ok(data.result.tools.every(tool => tool.securitySchemes[0].type === 'oauth2'));
   assert.ok(!data.result.tools.some(tool => /approve|publish|narration|revoke/.test(tool.name)));
+  for (const path of ['/api/releases/id/confirm', '/api/essays/a-belief/narration', '/api/audio-settings', '/api/connections/id/revoke']) {
+    assert.equal((await app.request(path, { method: 'POST', headers: { Origin: config.origin, 'Content-Type': 'application/json' }, body: '{}' })).status, 403);
+  }
+  const readOnly = createApp({ config, workspace, authenticate: async () => ({ ...ai, permissions: ['read'] }) });
+  const denied = await readOnly.fetch(new Request(`${config.origin}/mcp`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'propose_essay', arguments: proposal(null) } }) }));
+  const rejected = await denied.json(); assert.equal(rejected.result.isError, true); assert.match(rejected.result.content[0].text, /propose permission/);
+  assert.deepEqual(await workspace.list(human), []);
 });

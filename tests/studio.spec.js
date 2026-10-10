@@ -63,8 +63,12 @@ test('image upload, preview selection comment, Markdown export and real audio co
   await page.locator('#image-file').setInputFiles({ name: 'diagram.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZfoAAAAASUVORK5CYII=', 'base64') });
   await page.locator('#image-alt').fill('A safeguard diagram');
   await page.getByRole('button', { name: 'Insert image', exact: true }).click();
-  await page.locator('#preview .essay-body').scrollIntoViewIfNeeded();
-  await expect(page.locator('#preview img[alt="A safeguard diagram"]')).toBeVisible();
+  // The preview is replaced after the upload and its debounced render complete.
+  // Wait for the new content before scrolling, rather than the previous DOM.
+  const insertedImage = page.locator('#preview img[alt="A safeguard diagram"]');
+  await expect(insertedImage).toBeAttached();
+  await insertedImage.scrollIntoViewIfNeeded();
+  await expect(insertedImage).toBeVisible();
   await page.locator('#preview .essay-body').evaluate(root => {
     const node = [...root.querySelectorAll('p')].find(p => p.textContent.includes('A distinct passage')).firstChild;
     const range = document.createRange(); range.setStart(node, 2); range.setEnd(node, 18); const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range); root.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));

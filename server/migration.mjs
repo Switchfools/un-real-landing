@@ -31,6 +31,7 @@ export async function snapshotFiles(contentRoot) {
 export async function importFiles(workspace, identity, snapshot, media, backup) {
   requireHuman(identity);
   requireValue(snapshot.format === 'essay-studio-files-v1' && hash(JSON.stringify(snapshot.manifest)) === snapshot.id, 'Invalid migration snapshot.');
+  requireValue(hash(JSON.stringify(snapshot.files.map(({ path, sha256, size }) => ({ path, sha256, size })))) === snapshot.id, 'Import files do not match the manifest.');
   for (const file of snapshot.files) requireValue(hash(Buffer.from(file.content, 'base64')) === file.sha256, 'An import file failed its integrity check.');
   const previous = await workspace.tx(identity, tx => tx.get('migration', snapshot.id, false));
   if (previous) return verifyImport(workspace, identity, snapshot, media);

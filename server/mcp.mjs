@@ -46,7 +46,8 @@ export async function handleMcp(request, workspace, identity) {
         body = JSON.stringify(message);
       }
     }
-    return new Response(body.byteLength === 0 ? null : body, { status: response.status, headers: response.headers });
+    const headers = new Headers(response.headers); headers.delete('content-length');
+    return new Response(body.byteLength === 0 ? null : body, { status: response.status, headers });
   }
   finally { await server.close(); }
 }

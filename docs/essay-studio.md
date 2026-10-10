@@ -257,13 +257,17 @@ Lambda timeout. A durable outbox sweep covers crashes between a transaction and
 queue delivery. Failed/uncertain jobs, worker errors, API error spikes and dead
 letters have CloudWatch alarms. Logs omit manuscript contents and credentials.
 
-The stack creates SNS topic `UnrealEssayStudio-alerts` and an $10/month AWS budget
+The stack creates SNS topic `UnrealEssayStudio-alerts` and a $10/month AWS budget
 with an 80% actual-spend alert, filtered by `Application=UnrealEssayStudio`. Activate
 that cost-allocation tag in AWS Billing after it appears, then subscribe a chosen
 email to the SNS topic and confirm its subscription. Alerts are not a spending
 cap, and an unconfirmed topic subscription delivers no email. Supabase and
 ElevenLabs are billed separately from this AWS budget. Review the DLQ and job
 state before retrying; never bulk-replay uncertain audio work.
+
+For the initial deployment, the `Application` cost-allocation tag was activated
+on 2026-10-10 and the owner's chosen email was subscribed. AWS requires the owner
+to confirm its subscription email before alerts can be delivered.
 
 For a lightly used, single-author Studio, allow roughly **$3–10/month for AWS**
 as an estimate, with storage, traffic and logs affecting the total. Three Secrets
