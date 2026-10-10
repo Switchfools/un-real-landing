@@ -4,10 +4,12 @@ import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promis
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { runInNewContext } from 'node:vm';
-import { buildSite } from '../scripts/build.mjs';
 import { studioRoutes, studioDomain } from '../infra/domain.mjs';
+const inheritedFontConfig = process.env.FONTCONFIG_FILE;
+const { buildSite } = await import('../scripts/build.mjs');
 
 test('published SEO artifacts agree on canonical URLs, escape author text and exclude private material', async t => {
+  assert.equal(process.env.FONTCONFIG_FILE, inheritedFontConfig, 'Importing the builder must not change browser font configuration');
   const root = await mkdtemp(join(tmpdir(), 'unreal-seo-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const contentDir = join(root, 'content'), assetsDir = join(root, 'private-assets'), outDir = join(root, 'dist');
@@ -19,6 +21,7 @@ test('published SEO artifacts agree on canonical URLs, escape author text and ex
   await writeFile(join(assetsDir, 'private-note.png'), 'Private bytes must stay private.');
   for (const siteUrl of ['https://un-real.ai/', 'https://switchfools.github.io/un-real-landing/']) {
     await buildSite({ contentDir, assetsDir, outDir, siteUrl });
+    assert.equal(process.env.FONTCONFIG_FILE, inheritedFontConfig, 'Rendering cards must not change browser font configuration');
     const page = await readFile(join(outDir, 'essays/agency/index.html'), 'utf8');
     const schema = JSON.parse(page.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
     const article = schema['@graph'].find(node => node['@type'] === 'BlogPosting');
