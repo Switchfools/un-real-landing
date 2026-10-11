@@ -210,7 +210,7 @@ test('3D view can be dragged and reset while the flow stays paused', async ({ pa
   expect(await snapshot()).toBe(original);
 });
 
-test('published Markdown essays have working Pages links and an action section', async ({ page }, testInfo) => {
+test('published Markdown essays have working Pages links and an action section', async ({ page, browser }, testInfo) => {
   const outDir = testInfo.outputPath('dist');
   await promisify(execFile)(process.execPath, ['tests/build-fixture.mjs', outDir]);
   const home = await readFile(resolve(outDir, 'index.html'), 'utf8');
@@ -230,12 +230,29 @@ test('published Markdown essays have working Pages links and an action section',
   await expect(page.getByRole('img', { name: 'A repeatable cycle' })).toBeVisible();
   await page.getByText('A useful next step', { exact: true }).click();
   await expect(page.getByText('Write down what would change your mind.', { exact: true })).toBeVisible();
+  const visualization = page.locator('[data-visualization]');
+  await visualization.getByRole('button', { name: 'Run visualization' }).click();
+  await expect(visualization.locator('[data-viz-caption]')).toHaveText('Growth: 1');
+  await visualization.getByRole('slider', { name: 'Growth' }).focus();
+  await visualization.getByRole('slider', { name: 'Growth' }).press('ArrowRight');
+  await expect(visualization.locator('[data-viz-caption]')).toHaveText('Growth: 1.1');
+  await visualization.getByRole('button', { name: 'Stop', exact: true }).click();
   await page.getByRole('button', { name: 'Copy link' }).click();
   expect(await page.evaluate(() => window.copiedEssayUrl)).toBe('https://un-real.ai/essays/from-belief-to-action/');
   await expect(page.locator('[data-share-status]')).toContainText('Link copied');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath('essay.png'), fullPage: true });
+  const staticContext = await browser.newContext({ javaScriptEnabled: false });
+  try {
+    const staticPage = await staticContext.newPage();
+    await staticPage.route('**/essays/from-belief-to-action/', route => route.fulfill({ contentType: 'text/html', body: essay }));
+    await staticPage.goto('http://127.0.0.1:4173/un-real-landing/essays/from-belief-to-action/');
+    await expect(staticPage.locator('[data-visualization] [data-viz-fallback] svg')).toBeVisible();
+    await expect(staticPage.locator('[data-visualization]')).toContainText('This is a model, not a prediction.');
+    await expect(staticPage.locator('[data-viz-actions]')).toBeHidden();
+    expect(staticPage.workers()).toHaveLength(0);
+  } finally { await staticContext.close(); }
   await page.getByRole('link', { name: 'All essays' }).click();
   await expect(page).toHaveURL(/\/un-real-landing\/essays\/$/);
   await expect(page.getByRole('heading', { level: 1 })).toContainText('AI alignment.');

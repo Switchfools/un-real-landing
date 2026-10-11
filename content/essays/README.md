@@ -80,6 +80,59 @@ or upload it in Studio. Other clients can use `stage_image` with actual base64
 bytes (up to 2 MB). Put the returned Markdown in a proposal for your review.
 Image staging itself changes no manuscript.
 
+### Interactive visualizations
+
+Use a `visualization` JSON fence for generated JavaScript with a strictly limited
+drawing interface. It must define a synchronous `render(input)` function that
+returns `{commands: [...], caption?: "..."}`. It runs in a separate interpreter;
+there is no `window`, DOM, network, storage, browser messaging, timer, or module
+loader. Do not paste browser code, HTML, D3/CDN imports or event handlers into it.
+Use native JavaScript mathematics and the drawing commands below.
+
+```visualization
+{"title":"Explore a growth curve","description":"Move the growth slider to compare illustrative curves. This is a simplified model, not a prediction.","height":320,"controls":[{"id":"growth","label":"Growth","type":"range","min":0.5,"max":2,"step":0.05,"value":1}],"code":"function render({width,height,values}) { const points=[]; for(let i=0;i<=80;i++){const x=i/80;points.push([30+x*(width-60),height-30-Math.pow(x,values.growth)*(height-60)]);} return {commands:[{type:'polyline',points,stroke:'#e5ad72',lineWidth:3}],caption:'Growth: '+values.growth}; }","fallback":{"commands":[{"type":"line","x1":30,"y1":290,"x2":610,"y2":30,"stroke":"#e5ad72","lineWidth":3}]}}
+```
+
+Required: `title`, `description`, `code`. Optional: `height` (200–640; default
+400), `animated` (default false), `controls`, and `fallback`. The fallback is a
+static drawing in a 640 × height coordinate space. Always explain the main idea
+in `description` so it remains understandable without interaction.
+
+`input` provides `width`, `height`, `values` (only this diagram's controls),
+`pointer: {x, y, down}`, `time` (elapsed animation seconds) and `reducedMotion`.
+Pointer coordinates come only from the canvas; arrow keys move it and Space
+toggles its pressed state. Variables inside the interpreter can retain state
+between frames. Reset creates a fresh interpreter. Render once on Run and after
+input changes; animation advances only after the reader chooses Play.
+
+Controls (up to eight, unique lowercase `id` and accessible `label`):
+
+- `range`: `min`, `max`, `step`, numeric `value`.
+- `select`: `options` (2–12 strings), selected string `value`.
+- `toggle`: boolean `value`.
+
+Each drawing command has a `type` and its coordinates:
+
+| Type | Fields |
+| --- | --- |
+| `line` | `x1`, `y1`, `x2`, `y2` |
+| `rect` | `x`, `y`, `width`, `height` |
+| `circle` | `x`, `y`, `r` |
+| `path` | `d` containing only SVG path commands and numeric coordinates |
+| `polyline` | `points: [[x,y], ...]` |
+| `text` | `x`, `y`, `text`, optional `size` (8–64), `align` (left/center/right) |
+
+Commands may include `fill` and `stroke` (hex colors or `transparent`),
+`lineWidth` (0–20) and `opacity` (0–1). Coordinates must be finite and within
+±10,000. Paths are drawing data, not arbitrary SVG markup. All text is literal.
+
+Keep the JSON under 60 KB, code under 24 KB, and output under 180 KB. A frame may
+contain at most 1,200 commands and 12,000 path/polyline coordinate values. The
+interpreter has a 16 MB heap, a 40 ms execution deadline, and a separate worker
+watchdog. Large or invalid drawings stop with a recovery message. At most one
+visualization runs at a time, up to 15 animation frames per second. Review the
+code diff and interactive preview before approving; publish separately.
+
 Highlight text in either the manuscript or reader preview, then choose
 **Comment on selection**. Save to persist notes. Notes record the selected quote
 and nearby context; if a passage changes or becomes ambiguous, the Studio asks

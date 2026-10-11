@@ -118,6 +118,41 @@ embeds, forms, SVG/MathML input and external tracking images are removed. See
 [the Markdown examples](../content/essays/README.md). The original source stays
 visible in the proposal diff, including any markup removed from the preview.
 
+Interactive charts and simulations use a separate `visualization` JSON fence.
+ChatGPT's `get_visual_guide` describes its drawing commands, controls and example.
+The generated JavaScript defines `render(input)`; it **never runs as browser
+JavaScript or on the server**. It runs in QuickJS compiled to WebAssembly inside
+a dedicated, terminable browser worker. No browser or host APIs are exposed to
+the interpreter. Its only input is this diagram's control values, pointer,
+dimensions, animation time, and reduced-motion preference. Its only output is
+validated JSON drawing commands and a text caption. The trusted renderer draws
+those commands on a canvas; it never inserts generated HTML, CSS or script.
+
+The reader explicitly chooses **Run visualization**, then **Play animation** if
+wanted. **Stop** terminates the worker; **Reset** clears its state. At most one
+visualization runs per page, with 16 MB of guest heap, a 64 MB WASM memory ceiling,
+a 40 ms interpreter deadline per call and an independent 500 ms worker watchdog
+after loading. Animations are limited to 15 frames per second. Closing/removing
+a preview, scrolling it out of view, or hiding the tab stops it. The title, text
+explanation and optional static drawing remain available without JavaScript.
+The runtime bundle is self-hosted and loaded only after Run; there is no model
+API call, CDN, network permission or extra backend service for visualization.
+
+The full definition stays in immutable proposals, the approval diff, and the
+published Markdown. A proposed visualization cannot approve, save or publish.
+HTML snippets remain sanitized and never gain script execution. External
+libraries, arbitrary DOM/CSS, links, images, audio, and HTTP requests are outside
+the drawing API. This capability boundary is backed by maintained interpreter
+and browser isolation; it is not a guarantee against unknown engine defects.
+See [the format and example](../content/essays/README.md#interactive-visualizations).
+
+The Studio page retains its existing CSP. Only
+`/scripts/visualization-worker.js` receives the dedicated CSP allowing WASM
+compilation and denying connections and child workers. Deploy this CloudFront
+policy with CDK before relying on hosted visualizations; the usual Actions role
+deploys application artifacts but cannot change infrastructure. Public Pages
+uses the same interpreter and validated drawing boundary.
+
 Example requests:
 
 > Use the ideas in this conversation to propose an essay. Include a short abstract
@@ -131,6 +166,10 @@ Example requests:
 > Use the image you just generated in this conversation. Pass it to Essay Studio
 > with stage_chatgpt_image, then propose adding it to my essay with alt text and
 > a caption. Give me the Studio review link; leave approval and publication to me.
+
+> Read get_visual_guide. Propose an interactive visualization of this idea with
+> sliders and a clear explanation. Use the isolated drawing runtime, include a
+> static fallback, and give me the Studio review link.
 
 To finish a real acceptance walkthrough: create a proposal from a chosen chat,
 review it, add comments in Studio, ask ChatGPT for a revised proposal, compare

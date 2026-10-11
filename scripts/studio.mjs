@@ -7,6 +7,8 @@ import { StudioStore, fail } from './studio-store.mjs';
 import { parseEssay, serializeEssay, renderArticle, validateEssay, narrationHash, narrationText } from './essays.mjs';
 import { generateNarration } from './narration.mjs';
 import { listVoices, voicePreview } from './voices.mjs';
+import { buildVisualizations } from './build-visualizations.mjs';
+import { visualizationWorkerCsp } from './visualization-security.mjs';
 
 const project = fileURLToPath(new URL('../', import.meta.url));
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.avif': 'image/avif', '.woff2': 'font/woff2', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg' };
@@ -19,6 +21,7 @@ async function jsonBody(request) {
 }
 
 export async function createStudioServer({ contentRoot = process.env.STUDIO_CONTENT_ROOT || join(project, 'content') } = {}) {
+  await buildVisualizations(join(project, '.build/visualizations'));
   const store = new StudioStore(contentRoot); await store.init();
   let apiKey = process.env.ELEVENLABS_API_KEY || '';
   let defaultVoice = process.env.ELEVENLABS_VOICE_ID || 'nPczCjzI2devNBz1zQrb';
@@ -128,12 +131,14 @@ export async function createStudioServer({ contentRoot = process.env.STUDIO_CONT
       if (request.method !== 'GET' && request.method !== 'HEAD') throw fail('Method not allowed.', 405);
       let root, relative;
       if (path.startsWith('/assets/essays/')) { root = store.dir('essay-assets'); relative = path.slice('/assets/essays/'.length); }
+      else if (path.startsWith('/scripts/visualization')) { root = join(project, '.build/visualizations'); relative = path.slice(1); }
       else if (path.startsWith('/assets/') || path.startsWith('/styles/') || path === '/scripts/essay.js') { root = join(project, 'site'); relative = path.slice(1); }
       else { root = join(project, 'studio'); relative = path === '/' ? 'index.html' : path.slice(1); }
       const target = resolve(root, relative);
       if (!target.startsWith(resolve(root) + sep)) throw fail('Not found.', 404);
       let data; try { data = await readFile(target); } catch { throw fail('Not found.', 404); }
       const headers = { 'Content-Type': types[extname(target)] || 'application/octet-stream', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'self'; img-src 'self' https: http: blob:; media-src 'self' blob:; connect-src 'self'; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'", 'Accept-Ranges': 'bytes' };
+      if (path === '/scripts/visualization-worker.js') headers['Content-Security-Policy'] = visualizationWorkerCsp;
       const range = request.headers.range?.match(/^bytes=(\d+)-(\d*)$/);
       if (range) {
         const start = Number(range[1]), end = range[2] ? Math.min(Number(range[2]), data.length - 1) : data.length - 1;

@@ -1,3 +1,5 @@
+import './visualizations.js';
+
 export function setupAudio(root = document) {
   root.querySelectorAll('[data-audio-player]').forEach(player => {
     if (player.dataset.ready) return;

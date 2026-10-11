@@ -1,5 +1,6 @@
 import sanitizeHtml from 'sanitize-html';
 import { z } from 'zod';
+import { parseVisualization } from '../site/scripts/visualization-schema.js';
 
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const imagePath = /^\.\.\/\.\.\/assets\/essays\/[a-z0-9-]+\/[a-zA-Z0-9._-]+\.(?:png|jpe?g|webp|gif|avif)$/;
@@ -52,7 +53,8 @@ export function renderDiagram(source) {
 }
 
 export function richNarration(source) {
-  return source.replace(/^(`{3,}|~{3,})(html|diagram)[^\n]*\n([\s\S]*?)^\1\s*$/gm, (_, fence, kind, body) => {
+  return source.replace(/^(`{3,}|~{3,})(html|diagram|visualization)[^\n]*\n([\s\S]*?)^\1\s*$/gm, (_, fence, kind, body) => {
+    if (kind === 'visualization') { try { const spec = parseVisualization(body); return `Visualization: ${spec.title}. ${spec.description}`; } catch { return ''; } }
     if (kind === 'diagram') { try { return `Diagram: ${parseDiagram(body).title}.`; } catch { return ''; } }
     return sanitizeHtml(body, { allowedTags: [], allowedAttributes: {} });
   });

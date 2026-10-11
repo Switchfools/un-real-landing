@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { parseEssay, validateEssay, renderArticle, escape, displayDate, wordCount, validSlug } from './essays.mjs';
 import { SITE_URL, HOME_TITLE, HOME_DESCRIPTION, ESSAYS_TITLE, ESSAYS_DESCRIPTION, absolute, metadata, siteSchema, articleSchema, sitemap, feed } from './seo.mjs';
 import { socialCard } from './social-card.mjs';
+import { buildVisualizations } from './build-visualizations.mjs';
 
 const projectRoot = resolve(fileURLToPath(new URL('../', import.meta.url)));
 async function readEssays(directory) {
@@ -145,6 +146,7 @@ export async function buildSite({ contentDir = join(projectRoot, 'content/essays
   }
   await rm(output, { recursive: true, force: true });
   await cp(join(projectRoot, 'site'), output, { recursive: true });
+  await buildVisualizations(output);
   for (const [relative, data] of media) {
     await mkdir(join(output, 'assets/essays', relative.split('/')[0]), { recursive: true });
     await writeFile(join(output, 'assets/essays', relative), data);

@@ -29,7 +29,20 @@ try {
   page.on('response', response => { if (response.status() >= 400) failures.push(new URL(response.url()).pathname); });
   await page.goto(origin); await page.locator('.studio-login').waitFor();
   await page.getByRole('button', { name: 'Sign in with GitHub' }).focus();
+  const workerResponse = await fetch(`${origin}/scripts/visualization-worker.js`);
+  assert.equal(workerResponse.status, 200);
+  assert.match(workerResponse.headers.get('content-security-policy') || '', /script-src 'wasm-unsafe-eval'; connect-src 'none'/);
+  const visualization = await page.evaluate(() => new Promise((resolve, reject) => {
+    const worker = new Worker('/scripts/visualization-worker.js', { type: 'module' });
+    const timer = setTimeout(() => { worker.terminate(); reject(new Error('Visualization worker did not respond.')); }, 10000);
+    worker.onerror = () => { clearTimeout(timer); worker.terminate(); reject(new Error('Visualization worker failed.')); };
+    worker.onmessage = ({ data }) => {
+      if (data.ready) worker.postMessage({ id: 1, input: { width: 640, height: 320, values: {}, pointer: { x: 0, y: 0, down: false }, time: 0, reducedMotion: true }, code: 'function render() { const root = ({}).constructor.constructor("return globalThis")(); return {commands:[],caption:["fetch","document","localStorage","postMessage","process"].every(key => typeof root[key] === "undefined") ? "isolated" : "unexpected access"}; }' });
+      else { clearTimeout(timer); worker.terminate(); resolve(data); }
+    };
+  }));
+  assert.equal(visualization.frame?.caption, 'isolated');
   await mkdir('test-results/hosted-smoke', { recursive: true }); await page.screenshot({ path: 'test-results/hosted-smoke/sign-in.png' });
   assert.deepEqual(errors, []); assert.deepEqual(failures, []);
-  console.log('Hosted sign-in assets, OAuth discovery, private-schema denial, and unauthenticated API/MCP checks passed.');
+  console.log('Hosted sign-in, OAuth, private-schema/API/MCP protection, and isolated visualization worker checks passed.');
 } finally { await browser.close(); }

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Marked } from 'marked';
 import { parse, stringify } from 'yaml';
 import { renderSnippet, renderDiagram, richNarration } from './rich-content.mjs';
+import { renderVisualization } from './visualizations.mjs';
 
 export const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 export const hash = value => createHash('sha256').update(value).digest('hex');
@@ -79,6 +80,7 @@ export function renderMarkdown(source, prefix = '') {
     }],
     renderer: {
       code({ text, lang }) {
+        if (lang === 'visualization') return renderVisualization(text);
         if (lang === 'diagram') return renderDiagram(text);
         if (lang === 'html') return renderSnippet(text);
         return `<pre><code>${escape(text)}</code></pre>\n`;

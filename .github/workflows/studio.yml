@@ -3,7 +3,7 @@ on:
   pull_request:
   push:
     branches: [main]
-    paths: ['server/**', 'studio/**', 'infra/**', 'scripts/**', 'tests/**', 'package*.json', '.github/workflows/studio.yml']
+    paths: ['server/**', 'studio/**', 'infra/**', 'scripts/**', 'runtime/**', 'site/scripts/**', 'site/styles/**', 'tests/**', 'package*.json', '.github/workflows/studio.yml']
   workflow_dispatch:
 permissions:
   contents: read

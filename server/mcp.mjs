@@ -4,9 +4,10 @@ import { z } from 'zod';
 import { proposalInput, proposalRevisionInput } from './workspace.mjs';
 import { requireValue } from './errors.mjs';
 import { chatgptFile } from './chatgpt-files.mjs';
+import { visualizationExample } from '../site/scripts/visualization-schema.js';
 
 export function createMcp(workspace, identity, media) {
-  const server = new McpServer({ name: 'un-real-essay-studio', version: '1.2.0' });
+  const server = new McpServer({ name: 'un-real-essay-studio', version: '1.3.0' });
   const slug = { slug: z.string().max(100) };
   const tool = (name, description, schema, permission, callback, { fileParams = [], openWorld = false, outputSchema } = {}) => server.registerTool(name, {
     title: name.replaceAll('_', ' '), description, inputSchema: schema,
@@ -27,6 +28,10 @@ export function createMcp(workspace, identity, media) {
     diagrams: 'Put JSON in a fenced diagram block. Required: title and nodes (1–12). Each node has a unique id and label (max 80 characters); optional column 0–2 and row 0–11 set its grid position. Default column is 0; default row is its array index. Optional edges (max 24) have from, to, and optional label. Static SVG and a text description are generated safely; no scripts or external resources are used.',
     diagramExample: '```diagram\n{"title":"From idea to action","nodes":[{"id":"idea","label":"Discuss an idea"},{"id":"review","label":"Review the proposal"},{"id":"act","label":"Approve and act"}],"edges":[{"from":"idea","to":"review"},{"from":"review","to":"act"}]}\n```',
     html: 'Use a fenced html block (max 20 KB) for figures/captions, details/summary, tables, lists and basic prose formatting. Only a small allowlist survives sanitization. Scripts, event handlers, CSS, forms, embeds, SVG/MathML and tracking images are removed. Images must use the private ../../assets/essays/<slug>/<filename> reference. Use standard Markdown for ordinary writing.',
+    interactive: 'Use a fenced visualization block containing JSON with title, description (a useful noninteractive explanation), height (200–640, default 400), optional controls (max 8), optional animated boolean, code, and optional fallback drawing. Code defines a synchronous function render(input) and runs only in an isolated QuickJS interpreter inside a terminable worker. No DOM, window, document, fetch, storage, timers, imports, network or Studio APIs exist there. Never use HTML/JS snippets for interactive code. The author starts it with Run; animation needs Play. It is reviewed in the normal proposal and publication flows.',
+    interactiveInputs: 'render receives {width, height, values, pointer:{x,y,down}, time, reducedMotion}. values contains only this diagram’s controls. time is elapsed animation seconds. Controls: {id,label,type:"range",min,max,step,value}, {id,label,type:"select",options:[strings],value:string}, or {id,label,type:"toggle",value:boolean}. No essay text, auth tokens or other page data is passed. Code can keep internal variables between frames; Reset creates a fresh interpreter.',
+    interactiveOutput: 'Return {commands:[...],caption?:string}. Commands: line{x1,y1,x2,y2}, rect{x,y,width,height}, circle{x,y,r}, path{d:SVG coordinate path}, polyline{points:[[x,y],...]}, text{x,y,text,size?:8–64,align?:"left"|"center"|"right"}; every command needs type and may use fill/stroke hex colors, lineWidth 0–20 and opacity 0–1. Coordinates must be within ±10000. No HTML, arbitrary SVG, images, URLs or CSS. Limits: 60 KB definition, 24 KB code, 16 MB guest memory, 40 ms execution per call, 1200 commands, 12000 coordinate values, 180 KB output. Animation at most 15 fps; one active diagram per page. fallback uses the same {commands,caption} format in a 640 × height view.',
+    interactiveExample: '```visualization\n' + JSON.stringify(visualizationExample) + '\n```',
     review: 'Include all visual markup in the full proposed Markdown and explain it in the change summary. The author reviews the diff and reader preview, approves the exact batch, and publishes separately. Audio remains a Studio-only action.',
   }));
   tool('list_images', 'List private images for this essay, with portable Markdown asset paths. Only images referenced by an approved release are published.', slug, 'read', ({ slug }) => media.listImages(identity, slug));

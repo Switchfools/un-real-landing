@@ -1,4 +1,5 @@
 import { serve } from '@hono/node-server';
+import { visualizationWorkerCsp } from './visualization-security.mjs';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, join, extname } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -52,7 +53,11 @@ export async function createHostedPreview({ root = resolve('.local/hosted-previe
     const relative = ['/', '/oauth/consent', '/auth/callback'].includes(path) ? 'index.html' : path.slice(1);
     const target = resolve('.build/studio', relative); requireValue(target.startsWith(resolve('.build/studio') + '/'), 'Not found.', 404);
     const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2' };
-    try { c.header('Content-Type', types[extname(target)] || 'application/octet-stream'); return c.body(await readFile(target)); } catch { return c.notFound(); }
+    try {
+      c.header('Content-Type', types[extname(target)] || 'application/octet-stream');
+      c.header('Content-Security-Policy', path === '/scripts/visualization-worker.js' ? visualizationWorkerCsp : "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'");
+      return c.body(await readFile(target));
+    } catch { return c.notFound(); }
   });
   if (fixture) {
     const source = await readFile('tests/fixtures/essays/from-belief-to-action.md', 'utf8');

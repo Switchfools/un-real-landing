@@ -351,3 +351,20 @@ h2 { font-size: clamp(30px, 3.15vw, 44px); font-weight: 400; line-height: 1.22; 
   :root { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; }
 }
+
+.essay-visualization { margin: 2em 0; padding: 20px; border: 1px solid #44483c; border-radius: 8px; background: #141710; overflow: hidden; contain: layout paint; min-width: 0; }
+.essay-visualization > figcaption { display: block; padding: 0; font: inherit; font-weight: 600; color: #f0eee5; }
+.essay-visualization .visualization-description { font-size: 14px; line-height: 1.6; color: #c5c7bb; }
+.essay-visualization canvas, .essay-visualization svg { display: block; width: 100%; max-width: 100%; height: auto; background: #111310; border-radius: 4px; }
+.essay-visualization [hidden] { display: none; }
+.visualization-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 14px; margin-block: 16px; }
+.visualization-controls label { display: flex; flex-direction: column; gap: 5px; font: 13px/1.5 sans-serif; color: #e7e6db; min-width: 0; }
+.visualization-controls input, .visualization-controls select { width: 100%; min-width: 0; accent-color: #e5ad72; }
+.visualization-controls input[type=checkbox] { width: 20px; height: 20px; }
+.visualization-controls select { color: #f0eee5; background: #24281f; border: 1px solid #747a69; border-radius: 3px; padding: 8px; }
+.visualization-controls output { font-variant-numeric: tabular-nums; color: #c5c7bb; }
+.visualization-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.visualization-actions button { font: 13px/1.4 sans-serif; color: #f0eee5; background: #2d3225; border: 1px solid #747a69; border-radius: 4px; padding: 10px 14px; cursor: pointer; }
+.visualization-actions button:disabled { opacity: .5; cursor: default; }
+.essay-visualization :focus-visible { outline: 2px solid #e5ad72; outline-offset: 3px; }
+.essay-visualization [data-viz-caption], .essay-visualization [data-viz-status] { font: 13px/1.6 sans-serif; overflow-wrap: anywhere; }

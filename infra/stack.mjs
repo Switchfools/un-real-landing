@@ -6,6 +6,7 @@ import { Stack, Duration, RemovalPolicy, CfnOutput, Tags, Fn,
   aws_cloudwatch_actions as actions, aws_sns as sns, aws_budgets as budgets, aws_certificatemanager as acm,
 } from 'aws-cdk-lib';
 import { studioDomain, studioCertificateArn, studioRoutes } from './domain.mjs';
+import { visualizationWorkerCsp } from '../scripts/visualization-security.mjs';
 
 export class EssayStudioStack extends Stack {
   constructor(scope, id, props) {
@@ -44,10 +45,15 @@ export class EssayStudioStack extends Stack {
       contentTypeOptions: { override: true }, referrerPolicy: { referrerPolicy: cloudfront.HeadersReferrerPolicy.NO_REFERRER, override: true }, strictTransportSecurity: { accessControlMaxAge: Duration.days(365), includeSubdomains: true, override: true },
     } });
     apiBehavior.responseHeadersPolicy = headers;
+    const visualizationHeaders = new cloudfront.ResponseHeadersPolicy(this, 'VisualizationWorkerHeaders', {
+      securityHeadersBehavior: { contentSecurityPolicy: { contentSecurityPolicy: visualizationWorkerCsp, override: true }, contentTypeOptions: { override: true }, referrerPolicy: { referrerPolicy: cloudfront.HeadersReferrerPolicy.NO_REFERRER, override: true } },
+    });
     const distribution = new cloudfront.Distribution(this, 'Studio', { defaultRootObject: 'index.html', priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
       domainNames: [studioDomain], certificate: acm.Certificate.fromCertificateArn(this, 'StudioCertificate', studioCertificateArn),
       defaultBehavior: { origin: origins.S3BucketOrigin.withOriginAccessControl(web), viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS, cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, responseHeadersPolicy: headers, functionAssociations: [{ eventType: cloudfront.FunctionEventType.VIEWER_REQUEST, function: rewrite }] },
-      additionalBehaviors: { '/api/*': apiBehavior, '/mcp': apiBehavior, '/.well-known/*': apiBehavior },
+      additionalBehaviors: { '/api/*': apiBehavior, '/mcp': apiBehavior, '/.well-known/*': apiBehavior,
+        '/scripts/visualization-worker.js': { origin: origins.S3BucketOrigin.withOriginAccessControl(web), viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS, cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, responseHeadersPolicy: visualizationHeaders, functionAssociations: [{ eventType: cloudfront.FunctionEventType.VIEWER_REQUEST, function: rewrite }] },
+      },
     });
     new deployment.BucketDeployment(this, 'StudioAssets', { sources: [deployment.Source.asset('.build/studio')], destinationBucket: web, distribution, distributionPaths: ['/*'], cacheControl: [deployment.CacheControl.noCache()] });
     const alerts = new sns.Topic(this, 'Alerts', { topicName: 'UnrealEssayStudio-alerts' });
