@@ -36,6 +36,7 @@ function install(figure) {
   const canvas = figure.querySelector('[data-viz-canvas]'), fallback = figure.querySelector('[data-viz-fallback]');
   const caption = figure.querySelector('[data-viz-caption]'), controls = figure.querySelector('[data-viz-controls]');
   const actions = figure.querySelector('[data-viz-actions]'), run = figure.querySelector('[data-viz-run]'), stopButton = figure.querySelector('[data-viz-stop]'), reset = figure.querySelector('[data-viz-reset]');
+  const drawingWidth = () => Math.max(180, Math.min(900, Math.round(controls.clientWidth)));
   if (!globalThis.Worker || !globalThis.WebAssembly || !canvas.getContext('2d')) { status.textContent = 'Interactive mode is unavailable in this browser. The explanation and static view remain available.'; return; }
   let worker, watchdog, nextFrame, pending = false, dirty = false, ready = false, playing = false, sequence = 0, elapsed = 0, lastTime = 0;
   let values = Object.fromEntries(spec.controls.map(c => [c.id, c.value]));
@@ -69,7 +70,7 @@ function install(figure) {
     if (pending) { dirty = true; return; }
     dirty = false;
     clearTimeout(nextFrame);
-    const width = Math.max(180, Math.min(900, Math.round(figure.clientWidth)));
+    const width = drawingWidth();
     const time = performance.now(); if (playing) elapsed += Math.min((time - lastTime) / 1000, 0.1); lastTime = time;
     pending = true; const id = ++sequence;
     watchdog = setTimeout(() => stop('This visualization took too long and was stopped. The page is still available.'), 500);
@@ -92,7 +93,7 @@ function install(figure) {
       clearTimeout(watchdog); pending = false;
       if (event.data.error) { stop(event.data.error); return; }
       try {
-        const width = Math.max(180, Math.min(900, Math.round(figure.clientWidth)));
+        const width = drawingWidth();
         draw(canvas, event.data.frame, width, spec.height);
         caption.textContent = event.data.frame.caption || ''; canvas.hidden = false; fallback.hidden = true;
         status.textContent = playing ? 'Animation playing.' : 'Interactive mode ready. Change a control to explore.';
@@ -111,13 +112,13 @@ function install(figure) {
   play.addEventListener('click', () => { playing = !playing; lastTime = performance.now(); play.textContent = playing ? 'Pause animation' : 'Play animation'; requestFrame(); });
   for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'pointerleave']) canvas.addEventListener(type, event => {
     const rect = canvas.getBoundingClientRect();
-    pointer = { x: Math.max(0, Math.min(rect.width, event.clientX - rect.left)), y: Math.max(0, Math.min(spec.height, (event.clientY - rect.top) * spec.height / rect.height)), down: type === 'pointerdown' || (type === 'pointermove' && event.buttons > 0) };
+    pointer = { x: Math.max(0, Math.min(drawingWidth(), (event.clientX - rect.left) * drawingWidth() / rect.width)), y: Math.max(0, Math.min(spec.height, (event.clientY - rect.top) * spec.height / rect.height)), down: type === 'pointerdown' || (type === 'pointermove' && event.buttons > 0) };
     requestFrame();
   });
   canvas.addEventListener('keydown', event => {
     if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(event.key)) return;
     event.preventDefault();
-    pointer.x = Math.max(0, Math.min(figure.clientWidth, pointer.x + (event.key === 'ArrowRight' ? 10 : event.key === 'ArrowLeft' ? -10 : 0)));
+    pointer.x = Math.max(0, Math.min(drawingWidth(), pointer.x + (event.key === 'ArrowRight' ? 10 : event.key === 'ArrowLeft' ? -10 : 0)));
     pointer.y = Math.max(0, Math.min(spec.height, pointer.y + (event.key === 'ArrowDown' ? 10 : event.key === 'ArrowUp' ? -10 : 0)));
     if (event.key === ' ') pointer.down = !pointer.down; requestFrame();
   });

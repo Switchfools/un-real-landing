@@ -73,6 +73,19 @@ test('outer watchdog terminates a stalled interpreter and leaves the review usab
   await expect(page.locator('#changes-dialog .split-diff')).toBeVisible();
 });
 
+test('diagram pointer coordinates match the displayed canvas after resizing', async ({ page, request }) => {
+  const figure = await preview(page, await proposal(request, { ...visualizationExample, code: 'function render({width,pointer}) { return {commands:[],caption:Math.round(pointer.x/width*100)+"%"}; }' }));
+  await figure.getByRole('button', { name: 'Run visualization' }).click();
+  await expect(figure.locator('[data-viz-caption]')).toHaveText('0%');
+  for (const width of [390, 1100]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const canvas = figure.locator('canvas'); await canvas.scrollIntoViewIfNeeded();
+    const bounds = await canvas.boundingBox();
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    await expect(figure.locator('[data-viz-caption]')).toHaveText('50%');
+  }
+});
+
 test('animation requires Play, honors reduced motion, and workers stop when previews close', async ({ page, request }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const figure = await preview(page, await proposal(request, { ...visualizationExample, animated: true, code: 'function render({time}) { return {commands:[],caption:time.toFixed(2)}; }' }));
