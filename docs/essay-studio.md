@@ -83,15 +83,32 @@ restrictions are enforced by the backend, not by tool descriptions alone.
 **ChatGPT connections → Revoke access** takes effect on the next request,
 including requests carrying an otherwise valid token.
 
-For visuals, call `get_visual_guide` first. `list_images` returns reusable image
-references. `stage_image` accepts actual base64 PNG/JPEG/WebP/GIF/AVIF bytes up to
-2 MB and 25 megapixels, with a unique request ID and alt text. For a new essay,
-create the initial proposal first, stage its images, then revise the proposal.
+For visuals, call `get_visual_guide` first. Use `stage_chatgpt_image` for an image
+generated in the conversation or attached/selected by the author. Its `file`
+parameter declares [OpenAI's file input metadata](https://developers.openai.com/plugins/reference#define-file-inputs),
+so ChatGPT can supply `download_url` and `file_id`, with optional `mime_type` and
+`file_name`. This uses a temporary file download link, not public image hosting,
+base64 transcription or a separate image-generation API key. Studio immediately
+copies the bytes into private S3. Never invent file IDs, links or image bytes;
+`sandbox:/` paths are not downloadable by the server. If the current ChatGPT
+client cannot pass a generated image as a file, attach/select the saved image in
+the chat or upload it in Studio. File availability still depends on the client.
+Refresh the connection's tool list after deploying; confirm it includes
+`stage_chatgpt_image` before testing the generated-image handoff.
+
+File inputs accept PNG/JPEG/WebP/GIF/AVIF up to 12 MB and 25 megapixels, with a
+unique request ID and alt text. `list_images` returns reusable image references.
+Other MCP clients can still send actual base64 bytes using `stage_image` (2 MB).
+For a new essay, create the initial proposal first, stage its images, then revise the proposal.
 Staging is idempotent and leaves the manuscript unchanged; content-addressed
 filenames prevent replacing an image already shown in a reviewed version.
 Uploads are private and scoped to the owner's essay. Only referenced images
-enter an explicitly approved publication. Larger images can be uploaded through
-the Studio (12 MB). The MCP server does not generate images or fetch remote URLs.
+enter an explicitly approved publication. Retries reuse the first successful
+copy even when ChatGPT refreshes the temporary URL for the same file ID. Signed
+URLs are not persisted or returned in results. Downloads require HTTPS, reject
+private/reserved IP addresses at every redirect, pin validated DNS results, and
+enforce a 15-second deadline and streaming size limit. No Studio or OpenAI
+credentials are forwarded to file hosts. The MCP server does not generate images.
 
 Proposals may include `diagram` JSON code blocks and allowlisted `html` code
 blocks. The same server-side renderer creates the Studio preview and public HTML.
@@ -110,6 +127,10 @@ Example requests:
 > Read my saved comments on this essay. Propose one batch that addresses them;
 > suggest resolutions only for comments you actually address. Keep the accepted
 > draft unchanged until I review it.
+
+> Use the image you just generated in this conversation. Pass it to Essay Studio
+> with stage_chatgpt_image, then propose adding it to my essay with alt text and
+> a caption. Give me the Studio review link; leave approval and publication to me.
 
 To finish a real acceptance walkthrough: create a proposal from a chosen chat,
 review it, add comments in Studio, ask ChatGPT for a revised proposal, compare

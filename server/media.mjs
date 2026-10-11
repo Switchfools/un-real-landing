@@ -6,6 +6,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { imageSize } from 'image-size';
 import { hash, validSlug, parseEssay, renderArticle } from '../scripts/essays.mjs';
 import { requireValue, requireHuman, now } from './errors.mjs';
+import { chatgptFile, downloadChatgptImage, imageFileLimit } from './chatgpt-files.mjs';
 
 export const mediaTypes = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.avif': 'image/avif', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg' };
 export function referencedAssets(source, slug) {
@@ -38,33 +39,54 @@ export class S3Media {
 }
 
 export class MediaService {
-  constructor(workspace, storage) { this.workspace = workspace; this.storage = storage; }
+  constructor(workspace, storage, { fileDownload = downloadChatgptImage } = {}) { this.workspace = workspace; this.storage = storage; this.fileDownload = fileDownload; }
   async listImages(identity, slug) {
     requireValue(identity.permissions?.includes('read'), 'This connection needs read permission.', 403);
     return this.workspace.tx(identity, async tx => (await tx.list('asset')).filter(asset => asset.slug === slug && asset.state === 'ready' && asset.type.startsWith('image/')).map(asset => ({ ...this.result(asset), size: asset.size, alt: asset.alt || '' })));
   }
-  async stageImage(identity, input) {
+  imageInput(identity, input) {
     requireValue(identity.permissions?.includes('propose'), 'This connection needs propose permission.', 403);
     requireValue(validSlug(input.slug) && typeof input.alt === 'string' && input.alt.trim() && input.alt.length <= 500, 'Supply an essay filename and useful image alt text.');
+  }
+  async imageTarget(tx, slug) {
+    const essay = await tx.get('essay', slug, false);
+    requireValue(essay || (await tx.list('proposal')).some(item => item.slug === slug && item.state === 'pending'), 'Create an essay proposal or read an existing essay before staging its images.', 404);
+  }
+  async stageImage(identity, input) {
+    this.imageInput(identity, input);
     requireValue(typeof input.data === 'string' && input.data.length <= 2_800_000 && /^[A-Za-z0-9+/]+={0,2}$/.test(input.data), 'Supply a base64 PNG, JPEG, WebP, GIF or AVIF under 2 MB.');
     const bytes = Buffer.from(input.data, 'base64');
     requireValue(bytes.length > 0 && bytes.length <= 2_000_000 && bytes.toString('base64') === input.data, 'Supply canonical base64 for an image under 2 MB.');
+    return this.workspace.tx(identity, tx => this.workspace.receipt(tx, 'stage-image', { ...input, data: hash(bytes) }, async () => {
+      await this.imageTarget(tx, input.slug);
+      return this.storeStagedImage(tx, identity, input, bytes);
+    }));
+  }
+  async stageChatgptImage(identity, input) {
+    this.imageInput(identity, input); const file = chatgptFile.parse(input.file);
+    // Signed URLs expire and may refresh for the same file. The receipt freezes the
+    // first successful copy by file ID, without persisting its bearer URL or name.
+    const receipt = { requestId: input.requestId, slug: input.slug, alt: input.alt, fileId: file.file_id };
+    return this.workspace.tx(identity, tx => this.workspace.receipt(tx, 'stage-chatgpt-image', receipt, async () => {
+      await this.imageTarget(tx, input.slug);
+      const bytes = await this.fileDownload(file);
+      requireValue(Buffer.isBuffer(bytes) && bytes.length > 0 && bytes.length <= imageFileLimit, 'Use an image under 12 MB.');
+      return this.storeStagedImage(tx, identity, input, bytes);
+    }));
+  }
+  async storeStagedImage(tx, identity, input, bytes) {
     let dimensions; try { dimensions = imageSize(bytes); } catch { /* Report unsupported bytes without exposing internals. */ }
     const extension = { png: '.png', jpg: '.jpg', webp: '.webp', gif: '.gif', avif: '.avif' }[dimensions?.type];
     requireValue(extension && dimensions.width > 0 && dimensions.height > 0 && dimensions.width <= 10000 && dimensions.height <= 10000 && dimensions.width * dimensions.height <= 25_000_000, 'Use a raster image no larger than 25 megapixels; SVG and HTML uploads are not accepted.');
-    return this.workspace.tx(identity, tx => this.workspace.receipt(tx, 'stage-image', { ...input, data: hash(bytes) }, async () => {
-      const essay = await tx.get('essay', input.slug, false);
-      requireValue(essay || (await tx.list('proposal')).some(item => item.slug === input.slug && item.state === 'pending'), 'Create an essay proposal or read an existing essay before staging its images.', 404);
-      const filename = `image-${hash(bytes)}${extension}`, id = `${input.slug}/${filename}`;
-      let asset = await tx.get('asset', id, false);
-      if (!asset) {
-        requireValue((await tx.list('asset')).filter(item => item.slug === input.slug && item.stagedByMcp).length < 100, 'This essay already has 100 staged images. Reuse an existing image.');
-        asset = await this.storage.put({ id, slug: input.slug, filename, key: `${identity.owner}/${id}`, type: mediaTypes[extension], size: bytes.length, checksum: Buffer.from(hash(bytes), 'hex').toString('base64'), alt: input.alt.trim(), stagedByMcp: true, state: 'ready', createdAt: now() }, bytes);
-        await tx.insert('asset', id, asset);
-      }
-      const alt = input.alt.trim().replace(/[\\\[\]\r\n]/g, ' ');
-      return { ...this.result(asset), markdown: `![${alt}](${this.result(asset).src})`, summary: 'Image staged privately. Include this Markdown in a proposal for the author to review; the manuscript is unchanged.' };
-    }));
+    const filename = `image-${hash(bytes)}${extension}`, id = `${input.slug}/${filename}`;
+    let asset = await tx.get('asset', id, false);
+    if (!asset) {
+      requireValue((await tx.list('asset')).filter(item => item.slug === input.slug && item.stagedByMcp).length < 100, 'This essay already has 100 staged images. Reuse an existing image.');
+      asset = await this.storage.put({ id, slug: input.slug, filename, key: `${identity.owner}/${id}`, type: mediaTypes[extension], size: bytes.length, checksum: Buffer.from(hash(bytes), 'hex').toString('base64'), alt: input.alt.trim(), stagedByMcp: true, state: 'ready', createdAt: now() }, bytes);
+      await tx.insert('asset', id, asset);
+    }
+    const alt = input.alt.trim().replace(/[\\\[\]\r\n]/g, ' ');
+    return { ...this.result(asset), markdown: `![${alt}](${this.result(asset).src})`, summary: 'Image staged privately. Include this Markdown in a proposal for the author to review; the manuscript is unchanged.' };
   }
   async ticket(identity, slug, input) {
     requireHuman(identity); await this.workspace.get(identity, slug);

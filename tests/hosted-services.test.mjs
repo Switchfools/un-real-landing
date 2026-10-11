@@ -111,6 +111,42 @@ test('MCP stages immutable private images for review with ownership, size and pe
   assert.equal((await call(ai, 'list_images', { slug: 'visual-idea' })).structuredContent.result.length, 1);
 });
 
+test('ChatGPT file inputs stage privately, deduplicate refreshed links and require proposal approval', async t => {
+  const { workspace, storage, bytes } = await fixture(t);
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZfoAAAAASUVORK5CYII=', 'base64');
+  let downloads = 0, downloaded = png;
+  const media = new MediaService(workspace, storage, { fileDownload: async () => { downloads++; return downloaded; } });
+  const call = async (actor, args) => (await (await handleMcp(new Request('https://studio.example.com/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'stage_chatgpt_image', arguments: args } }) }), workspace, actor, media)).json()).result;
+  const initial = await workspace.propose(ai, { requestId: randomUUID(), slug: 'generated-visual', baseRevision: null, commentsRevision: null, source: fixtureSource, summary: 'First draft', resolveCommentIds: [] });
+  const input = { requestId: randomUUID(), slug: 'generated-visual', alt: 'Generated illustration', file: { download_url: 'https://files.example.com/image?signature=private-capability', file_id: 'file-generated' } };
+  const results = await Promise.all([call(ai, input), call(ai, { ...input, file: { ...input.file, download_url: 'https://files.example.com/image?signature=refreshed', mime_type: 'image/png', file_name: 'generated.png' } })]);
+  assert.equal(results[0].isError, undefined); assert.equal(results[1].isError, undefined);
+  assert.deepEqual(results[0].structuredContent, results[1].structuredContent);
+  assert.deepEqual(JSON.parse(results[0].content[0].text), JSON.parse(results[1].content[0].text));
+  const image = results[0].structuredContent.result;
+  assert.equal(downloads, 1); assert.equal(bytes.size, 1); assert.deepEqual(await workspace.list(human), []);
+  assert.doesNotMatch(JSON.stringify(await workspace.tx(human, tx => tx.all())), /signature=|file-generated|files\.example\.com/);
+  for (const [actor, changes] of [
+    [{ ...ai, permissions: ['read'] }, {}], [{ ...ai, owner: 'other-owner' }, {}], [ai, { slug: 'missing' }],
+  ]) assert.equal((await call(actor, { ...input, requestId: randomUUID(), ...changes })).isError, true);
+  assert.equal(downloads, 1, 'ownership and permissions are checked before any download');
+  assert.equal((await call(ai, { ...input, file: { ...input.file, file_id: 'different-file' } })).isError, true);
+  assert.equal(downloads, 1, 'a reused request ID cannot fetch different content');
+  downloaded = Buffer.from('<svg onload="alert(1)"></svg>');
+  const retry = { ...input, requestId: randomUUID(), file: { ...input.file, file_id: 'file-retry' } };
+  assert.match((await call(ai, retry)).content[0].text, /raster image/);
+  downloaded = Buffer.alloc(12_000_001);
+  assert.match((await call(ai, retry)).content[0].text, /12 MB/);
+  downloaded = png;
+  assert.equal((await call(ai, retry)).isError, undefined, 'failed imports can retry without changing the request ID');
+  assert.equal(bytes.size, 1, 'identical bytes reuse the immutable asset');
+  const proposal = await workspace.propose(ai, { requestId: randomUUID(), slug: input.slug, proposalId: initial.id, expectedVersion: 1, baseRevision: null, commentsRevision: null, source: fixtureSource + '\n' + image.markdown, summary: 'Add the generated image', resolveCommentIds: [] }, true);
+  assert.match(await media.urls(human, (await workspace.proposal(human, proposal.id)).html), /https:\/\/s3\.example\.com/);
+  assert.deepEqual(await workspace.list(human), []);
+  await workspace.decide(human, proposal.id, { requestId: randomUUID(), version: 2 }, true);
+  assert.match((await workspace.get(human, input.slug)).body, /!\[Generated illustration\]/);
+});
+
 test('narration resumes cached parts, requires explicit retry after uncertainty, and finishes after a worker restart', async t => {
   const { workspace, media, jobs } = await fixture(t);
   const current = await workspace.create(human, 'a-belief', fixtureSource); let calls = 0, fail = true;

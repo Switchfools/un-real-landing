@@ -95,6 +95,13 @@ test('MCP exposes proposals but never approval, release or narration; API reject
   assert.equal(mcp.status, 200);
   assert.ok(data.result.tools.some(tool => tool.name === 'propose_essay'));
   assert.ok(data.result.tools.every(tool => tool.securitySchemes[0].type === 'oauth2'));
+  const imageTool = data.result.tools.find(tool => tool.name === 'stage_chatgpt_image');
+  assert.deepEqual(imageTool._meta['openai/fileParams'], ['file']);
+  assert.deepEqual(imageTool.inputSchema.properties.file.required.sort(), ['download_url', 'file_id']);
+  assert.deepEqual(Object.keys(imageTool.inputSchema.properties.file.properties).sort(), ['download_url', 'file_id', 'file_name', 'mime_type']);
+  assert.equal(imageTool.inputSchema.properties.file.additionalProperties, false);
+  assert.equal(imageTool.annotations.readOnlyHint, false);
+  assert.equal(imageTool.annotations.openWorldHint, true);
   assert.ok(!data.result.tools.some(tool => /approve|publish|narration|revoke/.test(tool.name)));
   for (const path of ['/api/releases/id/confirm', '/api/essays/a-belief/narration', '/api/audio-settings', '/api/connections/id/revoke']) {
     assert.equal((await app.request(path, { method: 'POST', headers: { Origin: config.origin, 'Content-Type': 'application/json' }, body: '{}' })).status, 403);

@@ -72,9 +72,13 @@ accessible **Diagram in words** description. Diagrams render without JavaScript.
 {"title":"Belief into action","nodes":[{"id":"belief","label":"State a belief"},{"id":"test","label":"Test an assumption"}],"edges":[{"from":"belief","to":"test","label":"Choose a small experiment"}]}
 ```
 
-ChatGPT can call `get_visual_guide`, reuse images with `list_images`, and upload
-actual raster-image bytes with `stage_image` (up to 2 MB). It must put the returned
-Markdown in a proposal for your review. Image staging itself changes no manuscript.
+ChatGPT can call `get_visual_guide`, reuse images with `list_images`, and pass
+generated or attached images through `stage_chatgpt_image` (up to 12 MB). The file
+handoff copies the image into private Studio storage; no public hosting is needed.
+If ChatGPT cannot pass a generated image as a file, attach/select it in the chat
+or upload it in Studio. Other clients can use `stage_image` with actual base64
+bytes (up to 2 MB). Put the returned Markdown in a proposal for your review.
+Image staging itself changes no manuscript.
 
 Highlight text in either the manuscript or reader preview, then choose
 **Comment on selection**. Save to persist notes. Notes record the selected quote
