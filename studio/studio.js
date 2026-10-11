@@ -10,6 +10,7 @@ const normalize = text => text.replace(/\s+/g, ' ').trim();
 let current, dirty = false, editVersion = 0, renderVersion = 0;
 let renderTimer, noticeTimer, pendingImport, selected, revisionSource, audioHash = '', activeField = 'body', panel;
 let imagePosition = 0, audioPoll, renderedCharacters = 0, busySaving = false, uploading = false;
+let voiceSampleUrl, voiceSampleRequest = 0, availableVoices = [];
 let connection = { hosted: false }, review;
 
 async function api(path, options = {}) {
@@ -101,9 +102,9 @@ async function openEssay(slug) {
   await render(); await library();
   if (panel === 'history') await loadHistory();
   const job = await api(`/api/essays/${slug}/narration`);
-  if (job.state === 'running' || job.state === 'complete') await pollNarration(slug);
+  if (['running', 'complete', 'error'].includes(job.state)) await pollNarration(slug);
   const sample = await api(`/api/essays/${slug}/narration-preview`);
-  $('voice-preview').innerHTML = sample ? `<p class="small-note">Voice preview · ${escape(sample.narrator)}</p><audio controls src="${escape(sample.playbackUrl || sample.tracks[0].src)}"></audio>` : '';
+  $('voice-preview').innerHTML = sample ? `<p class="small-note">Essay preview · ${escape(sample.narrator)}</p><audio controls src="${escape(sample.playbackUrl || sample.tracks[0].src)}"></audio>` : '<p class="small-note">No essay preview yet. Generate a short preview to hear your own text.</p>';
   if (sample?.voice_id) { $('voice-id').value = sample.voice_id; $('narrator').value = sample.narrator; }
 }
 async function save() {
@@ -354,13 +355,36 @@ $('confirm-release').addEventListener('click', handle(async () => {
 $('audio-connect').addEventListener('submit', handle(async event => {
   event.preventDefault(); const data = await api('/api/audio-settings', { method: 'POST', body: JSON.stringify({ apiKey: $('api-key').value, voiceId: $('voice-id').value }) });
   $('api-key').value = ''; $('audio-connection').textContent = data.connected ? (connection.hosted ? 'Key stored securely for your workspace' : 'Key configured for this local session') : 'Not connected';
+  if (data.connected) await loadVoices();
 }));
-$('load-voices').addEventListener('click', handle(async () => {
-  const voices = await api('/api/voices'); $('voice-list').hidden = false;
-  $('voice-list').innerHTML = '<option value="">Choose a voice</option>' + voices.map(voice => `<option value="${escape(voice.id)}" data-name="${escape(voice.name)}">${escape(voice.name)} · ${escape(voice.description)}</option>`).join('');
+async function loadVoices() {
+  availableVoices = await api('/api/voices'); $('voice-list').hidden = false;
+  $('voice-list').innerHTML = '<option value="">Choose a voice</option>' + availableVoices.map(voice => `<option value="${escape(voice.id)}" data-name="${escape(voice.name)}">${escape(voice.name)} · ${escape(voice.description)}</option>`).join('');
+  $('voice-list').value = $('voice-id').value;
+  $('voice-library-status').textContent = availableVoices.length ? 'Listen to the selected voice’s existing sample. This does not generate narration.' : 'No voices found. Paste a voice ID from your ElevenLabs library.';
+}
+function clearVoiceSample() {
+  voiceSampleRequest++; $('voice-audition').pause(); $('voice-audition').removeAttribute('src'); $('voice-audition').hidden = true;
+  if (voiceSampleUrl) URL.revokeObjectURL(voiceSampleUrl); voiceSampleUrl = null;
+  $('listen-voice').disabled = false;
+}
+$('load-voices').addEventListener('click', handle(loadVoices));
+$('voice-list').addEventListener('change', () => { clearVoiceSample(); $('voice-id').value = $('voice-list').value; $('narrator').value = $('voice-list').selectedOptions[0].dataset.name || 'ElevenLabs narrator'; });
+$('voice-id').addEventListener('input', () => { clearVoiceSample(); $('narrator').value = $('voice-id').value === 'nPczCjzI2devNBz1zQrb' ? 'Brian · ElevenLabs' : 'ElevenLabs narrator'; });
+$('listen-voice').addEventListener('click', handle(async () => {
+  clearVoiceSample(); const request = voiceSampleRequest; $('listen-voice').disabled = true;
+  $('voice-library-status').textContent = 'Loading voice sample…';
+  try {
+    const sample = await api(`/api/voices/${encodeURIComponent($('voice-id').value)}/preview`);
+    if (request !== voiceSampleRequest) return;
+    const bytes = Uint8Array.from(atob(sample.data), char => char.charCodeAt(0));
+    voiceSampleUrl = URL.createObjectURL(new Blob([bytes], { type: sample.type }));
+    $('voice-audition').src = voiceSampleUrl; $('voice-audition').hidden = false;
+    $('voice-library-status').textContent = `Voice sample · ${sample.name}. Generate a short preview below to hear your essay.`;
+    try { await $('voice-audition').play(); } catch { /* Native play remains available. */ }
+  } catch (error) { if (request === voiceSampleRequest) $('voice-library-status').textContent = error.message; throw error; }
+  finally { if (request === voiceSampleRequest) $('listen-voice').disabled = false; }
 }));
-$('voice-list').addEventListener('change', () => { $('voice-id').value = $('voice-list').value; $('narrator').value = $('voice-list').selectedOptions[0].dataset.name || 'ElevenLabs narrator'; });
-$('voice-id').addEventListener('input', () => { $('narrator').value = $('voice-id').value === 'nPczCjzI2devNBz1zQrb' ? 'Brian · ElevenLabs' : 'ElevenLabs narrator'; });
 $('voice-sample').addEventListener('click', handle(() => generate(true)));
 $('generate-audio').addEventListener('click', handle(() => generate(false)));
 $('audio-file').addEventListener('change', handle(async () => {
@@ -387,6 +411,7 @@ try {
   const requested = location.hash.slice(1);
   if (essays.length) await openEssay(essays.some(essay => essay.slug === requested) ? requested : essays[0].slug);
   else { $('empty-state').hidden = false; $('save-state').textContent = 'Ready when you are'; }
-  const audio = await api('/api/audio-settings'); $('audio-connection').textContent = audio.connected ? 'ElevenLabs key configured' : 'Connect your account to generate narration';
+  const audio = await api('/api/audio-settings'); $('audio-connection').textContent = audio.connected ? 'ElevenLabs key configured' : connection.hosted && !connection.local ? 'Connect ElevenLabs here. Your computer’s .env does not configure the online Studio.' : 'Connect your account to generate narration';
   if (!$('voice-id').value) { $('voice-id').value = audio.voiceId; $('narrator').value = audio.narrator; }
+  if (audio.connected) await loadVoices().catch(error => { $('voice-library-status').textContent = error.message; });
 } catch (error) { notice(error.message, true); $('save-state').textContent = 'Could not open workspace'; }

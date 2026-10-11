@@ -67,7 +67,11 @@ the narrator's timbre. Generated audio is disclosed as AI narration.
 
 Alternatively, copy `.env.example` to `.env` or `.env.local` and fill in
 `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` before starting the Studio.
-Both files are ignored by Git; `.env.local` takes precedence. The browser never receives a stored API key.
+Both files are ignored by Git; `.env.local` takes precedence. These files configure
+the local Studio only. For the online Studio, connect the key in its **Audio**
+panel or use the [private AWS configuration command](docs/essay-studio.md#audio-failures-and-operating-costs).
+**Listen to selected voice** plays an existing library sample; **Generate short
+preview** creates a reading of your own text. The browser never receives a stored API key.
 Generation happens only when requested in the UI, sends the saved manuscript to
 ElevenLabs, and uses the account's credits. Voice browsing requires the key's
 `voices_read` permission; speech generation can also use a voice ID directly.
@@ -82,7 +86,7 @@ audio before release. Images support PNG, JPEG, WebP, GIF and AVIF up to 12 MB.
 
 ## Preview
 
-With Node.js 22 or later:
+With Node.js 22.12 or later:
 
 ```sh
 npm ci

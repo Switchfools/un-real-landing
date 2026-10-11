@@ -3,6 +3,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { parseEssay, serializeEssay, validateEssay, renderArticle, narrationHash, narrationText } from '../scripts/essays.mjs';
 import { requireValue, requireHuman, now } from './errors.mjs';
 import { handleMcp } from './mcp.mjs';
+import { listVoices, voicePreview } from '../scripts/voices.mjs';
 
 export function createApp({ config, workspace, authenticate, media, jobs, narration, releases, secrets }) {
   const app = new Hono();
@@ -19,7 +20,7 @@ export function createApp({ config, workspace, authenticate, media, jobs, narrat
   app.get('/.well-known/oauth-protected-resource', c => c.json({ resource: `${config.origin}/mcp`, authorization_servers: [`${config.supabaseUrl}/auth/v1`], scopes_supported: ['openid', 'email', 'profile'], resource_name: 'un-real Essay Studio' }));
   app.get('/.well-known/oauth-protected-resource/mcp', c => c.redirect(`${config.origin}/.well-known/oauth-protected-resource`));
   app.all('/mcp', async c => {
-    try { const identity = await authenticate(c.req.raw, true); return handleMcp(c.req.raw, workspace, identity); }
+    try { const identity = await authenticate(c.req.raw, true); return handleMcp(c.req.raw, workspace, identity, media); }
     catch (error) {
       if (error.status === 401 || error.status === 403) c.header('WWW-Authenticate', `Bearer resource_metadata="${config.origin}/.well-known/oauth-protected-resource", error="${error.status === 401 ? 'invalid_token' : 'insufficient_scope'}"`);
       throw error;
@@ -64,11 +65,9 @@ export function createApp({ config, workspace, authenticate, media, jobs, narrat
   app.get('/api/audio-settings', async c => { const settings = await secrets.getAudio(); return c.json({ connected: Boolean(settings.apiKey), voiceId: settings.voiceId || 'nPczCjzI2devNBz1zQrb', narrator: settings.voiceId && settings.voiceId !== 'nPczCjzI2devNBz1zQrb' ? 'ElevenLabs narrator' : 'Brian · ElevenLabs' }); });
   app.post('/api/audio-settings', async c => c.json(await secrets.setAudio(await c.req.json())));
   app.get('/api/voices', async c => {
-    const { apiKey } = await secrets.getAudio(); requireValue(apiKey, 'Connect ElevenLabs first.');
-    const response = await fetch('https://api.elevenlabs.io/v2/voices?page_size=100', { headers: { 'xi-api-key': apiKey }, signal: AbortSignal.timeout(20000) });
-    requireValue(response.ok, `ElevenLabs returned ${response.status}. Check the key’s voices_read permission.`, 502);
-    return c.json((await response.json()).voices.map(voice => ({ id: voice.voice_id, name: voice.name, description: Object.values(voice.labels || {}).join(' · ') })));
+    return c.json(await listVoices((await secrets.getAudio()).apiKey));
   });
+  app.get('/api/voices/:id/preview', async c => c.json(await voicePreview((await secrets.getAudio()).apiKey, c.req.param('id'))));
   const playable = async (actor, audio) => {
     if (!audio?.tracks?.length) return null;
     const id = audio.tracks[0].src.replace('../../assets/essays/', '');

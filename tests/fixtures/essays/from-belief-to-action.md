@@ -20,3 +20,11 @@ What would change your mind? Put the question in writing and examine it.
 1. Name the assumption.
 2. Choose a small experiment.
 3. Share what you learn.
+
+```diagram
+{"title":"A repeatable cycle","nodes":[{"id":"idea","label":"Question an assumption"},{"id":"test","label":"Run a small experiment"}],"edges":[{"from":"idea","to":"test"}]}
+```
+
+```html
+<details><summary>A useful next step</summary><p>Write down what would change your mind.</p></details>
+```

@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { StudioStore, fail } from './studio-store.mjs';
 import { parseEssay, serializeEssay, renderArticle, validateEssay, narrationHash, narrationText } from './essays.mjs';
 import { generateNarration } from './narration.mjs';
+import { listVoices, voicePreview } from './voices.mjs';
 
 const project = fileURLToPath(new URL('../', import.meta.url));
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.avif': 'image/avif', '.woff2': 'font/woff2', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg' };
@@ -68,16 +69,10 @@ export async function createStudioServer({ contentRoot = process.env.STUDIO_CONT
           return send({ connected: Boolean(apiKey), voiceId: defaultVoice });
         }
         if (path === '/api/voices' && method === 'GET') {
-          if (!apiKey) throw fail('Connect ElevenLabs first.');
-          const result = await fetch('https://api.elevenlabs.io/v2/voices?page_size=100', { headers: { 'xi-api-key': apiKey }, signal: AbortSignal.timeout(20000) });
-          if (!result.ok) {
-            const error = await result.json().catch(() => ({}));
-            if (error.detail?.status === 'missing_permissions') throw fail('Your ElevenLabs key needs voices_read permission to browse voices. You can still paste a voice ID and generate speech.', 403);
-            throw fail(`ElevenLabs returned ${result.status}. Check your API key and voice permissions.`, 502);
-          }
-          const data = await result.json();
-          return send((data.voices || []).map(voice => ({ id: voice.voice_id, name: voice.name, description: Object.values(voice.labels || {}).join(' · ') })));
+          return send(await listVoices(apiKey));
         }
+        const audition = path.match(/^\/api\/voices\/([a-zA-Z0-9_-]+)\/preview$/);
+        if (audition && method === 'GET') return send(await voicePreview(apiKey, audition[1]));
         const match = path.match(/^\/api\/essays\/([a-z0-9-]+)(?:\/(.*))?$/);
         if (!match) throw fail('Not found.', 404);
         const [, slug, action] = match;

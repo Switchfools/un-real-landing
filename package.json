@@ -5,7 +5,7 @@
   "type": "module",
   "description": "The mission of un-real.ai: alignment, coexistence, and symbiosis.",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   },
   "overrides": {
     "aws-cdk-lib": {
@@ -49,8 +49,10 @@
     "@supabase/supabase-js": "2.117.3",
     "diff": "9.0.0",
     "hono": "4.13.13",
+    "image-size": "2.0.4",
     "jose": "6.2.12",
     "postgres": "3.4.9",
+    "sanitize-html": "2.18.0",
     "zod": "4.6.5"
   }
 }

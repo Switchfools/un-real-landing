@@ -120,7 +120,7 @@ kbd { font: 9px var(--mono); margin-left: 18px; opacity: .7; }
 #audio-connection, #audio-progress { font: 10px/1.8 var(--mono); color: var(--accent); margin-bottom: 14px; }
 .checkbox-label { display: flex !important; gap: 10px; align-items: center; }
 .studio input[type="checkbox"] { width: auto; }
-#voice-preview audio { width: 100%; margin-top: 12px; }
+#voice-preview audio, #voice-audition { width: 100%; margin-top: 12px; }
 .audio-stale { color: #ffbe90; line-height: 1.8; font-size: 11px; }
 .comment-card { padding: 20px 0; border-bottom: 1px solid var(--border); }
 .comment-card.resolved { opacity: .6; }

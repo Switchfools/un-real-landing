@@ -51,6 +51,31 @@ Do not repeat the title or author in the body. Headings become section links;
 footnotes use `[^1]` references and `[^1]: Source details` definitions. Raw HTML is
 shown as text, and unsafe link schemes are suppressed.
 
+For a small formatted disclosure, figure/caption or table, use an explicit `html`
+code block. Its preview is sanitized with a strict allowlist: no scripts, event
+handlers, CSS, forms, embeds, SVG/MathML or external image requests. Image sources
+must use the essay's portable local asset reference. Ordinary raw HTML remains
+escaped. To show HTML as literal code, use a `text` code block instead.
+
+```html
+<details><summary>What would change my mind?</summary>
+<p>A repeatable experiment that challenges this assumption.</p></details>
+```
+
+For a flow diagram, use a `diagram` code block containing JSON. A title is required;
+use 1–12 nodes with unique IDs and labels up to 80 characters. Optional `column`
+(0–2) and `row` (0–11) position nodes on a grid; the defaults are column 0 and the
+node's array index. Up to 24 edges connect node IDs. Edge labels appear in the
+accessible **Diagram in words** description. Diagrams render without JavaScript.
+
+```diagram
+{"title":"Belief into action","nodes":[{"id":"belief","label":"State a belief"},{"id":"test","label":"Test an assumption"}],"edges":[{"from":"belief","to":"test","label":"Choose a small experiment"}]}
+```
+
+ChatGPT can call `get_visual_guide`, reuse images with `list_images`, and upload
+actual raster-image bytes with `stage_image` (up to 2 MB). It must put the returned
+Markdown in a proposal for your review. Image staging itself changes no manuscript.
+
 Highlight text in either the manuscript or reader preview, then choose
 **Comment on selection**. Save to persist notes. Notes record the selected quote
 and nearby context; if a passage changes or becomes ambiguous, the Studio asks

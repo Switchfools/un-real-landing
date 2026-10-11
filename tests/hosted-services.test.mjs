@@ -17,6 +17,7 @@ import { GitHubPublisher } from '../server/github.mjs';
 import { snapshotFiles, importFiles, exportOriginalFiles, backupWorkspace, restoreWorkspace } from '../server/migration.mjs';
 import { hash, serializeEssay, parseEssay, narrationHash } from '../scripts/essays.mjs';
 import { fixtureSource } from './studio-fixture.mjs';
+import { handleMcp } from '../server/mcp.mjs';
 
 const human = { owner: 'github:123', userId: 'owner', clientId: null }, ai = { ...human, clientId: 'chatgpt', permissions: ['read', 'propose'] };
 async function fixture(t) {
@@ -83,6 +84,31 @@ test('media validates ownership, size and checksum and pins verified objects', a
   await assert.rejects(media.complete({ ...human, owner: 'other' }, ticket.id), /Not found/);
   assert.doesNotMatch(await media.urls(human, '<img src="https://tracker.example.com/pixel">'), /tracker/);
   assert.throws(() => referencedAssets(fixtureSource + '\n![external][image]\n\n[image]: https://tracker.example.com/image.png', 'a-belief'), /Upload images/);
+});
+
+test('MCP stages immutable private images for review with ownership, size and permission checks', async t => {
+  const { workspace, media, bytes } = await fixture(t);
+  const call = async (actor, name, args) => (await (await handleMcp(new Request('https://studio.example.com/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }) }), workspace, actor, media)).json()).result;
+  const initial = await workspace.propose(ai, { requestId: randomUUID(), slug: 'visual-idea', baseRevision: null, commentsRevision: null, source: fixtureSource, summary: 'First draft', resolveCommentIds: [] });
+  const input = { requestId: randomUUID(), slug: 'visual-idea', alt: 'A safeguard', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZfoAAAAASUVORK5CYII=' };
+  const response = await call(ai, 'stage_image', input); assert.equal(response.isError, undefined);
+  const image = response.structuredContent.result;
+  assert.match(image.src, /^\.\.\/\.\.\/assets\/essays\/visual-idea\/image-[a-f0-9]{64}\.png$/);
+  assert.deepEqual((await call(ai, 'stage_image', input)).structuredContent.result, image); assert.equal(bytes.size, 1);
+  assert.equal((await call({ ...ai, permissions: ['read'] }, 'stage_image', { ...input, requestId: randomUUID() })).isError, true);
+  assert.equal((await call({ ...ai, owner: 'another-owner' }, 'stage_image', { ...input, requestId: randomUUID() })).isError, true);
+  await assert.rejects(media.stageImage(ai, { ...input, requestId: randomUUID(), data: Buffer.from('<svg onload="alert(1)"></svg>').toString('base64') }), /raster image/);
+  await assert.rejects(media.stageImage(ai, { ...input, requestId: randomUUID(), data: Buffer.alloc(2_000_001).toString('base64') }), /2 MB/);
+  await assert.rejects(media.stageImage(ai, { ...input, alt: 'Different use of request ID' }), /request ID/);
+  assert.deepEqual(await workspace.list(human), []);
+  const updated = await workspace.propose(ai, { requestId: randomUUID(), slug: 'visual-idea', proposalId: initial.id, expectedVersion: 1, baseRevision: null, commentsRevision: null, source: fixtureSource + '\n' + image.markdown, summary: 'Add a safeguard image', resolveCommentIds: [] }, true);
+  const preview = await media.urls(human, (await workspace.proposal(human, updated.id)).html);
+  assert.match(preview, /https:\/\/s3.example.com/);
+  await assert.rejects(media.urls({ ...human, owner: 'another-owner' }, (await workspace.proposal(human, updated.id)).html), /Not found/);
+  assert.deepEqual(referencedAssets((await workspace.proposal(human, updated.id)).source, 'visual-idea'), [image.id.split('/')[1]]);
+  await workspace.decide(human, updated.id, { requestId: randomUUID(), version: 2 }, true);
+  assert.match((await workspace.get(human, 'visual-idea')).body, /!\[A safeguard\]/);
+  assert.equal((await call(ai, 'list_images', { slug: 'visual-idea' })).structuredContent.result.length, 1);
 });
 
 test('narration resumes cached parts, requires explicit retry after uncertainty, and finishes after a worker restart', async t => {

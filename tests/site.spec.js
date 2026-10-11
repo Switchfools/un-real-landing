@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { buildSite } from '../scripts/build.mjs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 for (const path of ['/', '/un-real-landing/']) {
   test(`loads the full site and every asset at ${path}`, async ({ page }, testInfo) => {
@@ -211,7 +212,7 @@ test('3D view can be dragged and reset while the flow stays paused', async ({ pa
 
 test('published Markdown essays have working Pages links and an action section', async ({ page }, testInfo) => {
   const outDir = testInfo.outputPath('dist');
-  await buildSite({ contentDir: resolve('tests/fixtures/essays'), outDir });
+  await promisify(execFile)(process.execPath, ['tests/build-fixture.mjs', outDir]);
   const home = await readFile(resolve(outDir, 'index.html'), 'utf8');
   const essay = await readFile(resolve(outDir, 'essays/from-belief-to-action/index.html'), 'utf8');
   const archive = await readFile(resolve(outDir, 'essays/index.html'), 'utf8');
@@ -226,6 +227,9 @@ test('published Markdown essays have working Pages links and an action section',
   await expect(page.locator('.essay-prose strong')).toHaveText('testable commitment');
   await expect(page.locator('.essay-action')).toContainText('Write down one assumption and test it this week.');
   await expect(page.locator('.essay-action a')).toHaveAttribute('href', 'mailto:contact-us@un-real.ai');
+  await expect(page.getByRole('img', { name: 'A repeatable cycle' })).toBeVisible();
+  await page.getByText('A useful next step', { exact: true }).click();
+  await expect(page.getByText('Write down what would change your mind.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Copy link' }).click();
   expect(await page.evaluate(() => window.copiedEssayUrl)).toBe('https://un-real.ai/essays/from-belief-to-action/');
   await expect(page.locator('[data-share-status]')).toContainText('Link copied');

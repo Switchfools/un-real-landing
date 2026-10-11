@@ -171,6 +171,15 @@ h2 { font-size: clamp(30px, 3.15vw, 44px); font-weight: 400; line-height: 1.22; 
 .share-links a, .share-links button { font-size: 13px; color: var(--accent); }
 .share-links button { padding: 10px 16px; border: 1px solid var(--line); border-radius: 3px; background: transparent; cursor: pointer; }
 .essay-share [role="status"] { min-height: 1.8em; font-size: 13px; }
+.essay-diagram, .essay-snippet { margin-block: 32px; max-width: 100%; }
+.essay-diagram figcaption { color: var(--accent); margin-bottom: 16px; }
+.diagram-scroll { overflow-x: auto; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; }
+.diagram-scroll svg { display: block; margin-inline: auto; max-width: none; font-family: inherit; }
+.essay-diagram details { margin-top: 12px; font-size: 14px; }
+.essay-snippet { overflow-x: auto; }
+.essay-snippet details { padding: 16px; border: 1px solid var(--line); }
+.essay-snippet summary { cursor: pointer; color: var(--accent); }
+.essay-snippet figcaption { color: var(--muted); font-size: 14px; }
 .site-footer > a:not(.footer-brand) { color: var(--muted); font: 11px var(--mono); }
 .essay-header { margin-bottom: 46px; padding-bottom: 32px; border-bottom: 1px solid var(--line); }
 .essay-header .eyebrow { margin-bottom: 22px; }

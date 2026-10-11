@@ -99,7 +99,7 @@ export class Workspace {
         requireValue(proposal.state === 'pending' && proposal.version === input.expectedVersion && proposal.slug === input.slug, 'The proposal changed or is no longer pending.', 409);
       }
       const doc = manuscript(input.source);
-      // The AI edits writing, not media, approval state, or publication flags.
+      // Proposals can reference staged images; narration remains a human action.
       requireValue(isDeepStrictEqual(doc.metadata.audio ?? null, current?.metadata.audio ?? null), 'Audio attachments can only be changed in the Studio.');
       doc.metadata.status = current?.metadata.status || 'Draft';
       const source = serializeEssay(doc);

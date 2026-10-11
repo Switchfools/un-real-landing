@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Marked } from 'marked';
 import { parse, stringify } from 'yaml';
+import { renderSnippet, renderDiagram, richNarration } from './rich-content.mjs';
 
 export const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 export const hash = value => createHash('sha256').update(value).digest('hex');
@@ -77,6 +78,11 @@ export function renderMarkdown(source, prefix = '') {
       },
     }],
     renderer: {
+      code({ text, lang }) {
+        if (lang === 'diagram') return renderDiagram(text);
+        if (lang === 'html') return renderSnippet(text);
+        return `<pre><code>${escape(text)}</code></pre>\n`;
+      },
       html({ text }) { return escape(text); },
       heading({ tokens, depth }) {
         const label = tokens.map(token => token.text || token.raw || '').join('').replace(/<[^>]*>/g, '');
@@ -103,7 +109,7 @@ export function renderMarkdown(source, prefix = '') {
 
 export function narrationText({ metadata, body }) {
   // Read links as prose, skip URLs and footnote definitions, and retain pauses.
-  return `${metadata.title || ''}.\n\n${metadata.subtitle || metadata.description || ''}\n\nThe idea in brief.\n\n${metadata.summary || ''}\n\nThe full essay.\n\n${body}`
+  return `${metadata.title || ''}.\n\n${metadata.subtitle || metadata.description || ''}\n\nThe idea in brief.\n\n${metadata.summary || ''}\n\nThe full essay.\n\n${richNarration(body)}`
     .replace(/^\[\^[\w-]+\]:[^\n]*(?:\n[ \t]+[^\n]*)*/gm, '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/\[\^[\w-]+\]/g, '')
     .replace(/<[^>]*>/g, '').replace(/^\s{0,3}(?:#{1,6}\s+|>\s?|[-*+]\s+)/gm, '').replace(/^[-*_]{3,}\s*$/gm, '')

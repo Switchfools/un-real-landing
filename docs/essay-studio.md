@@ -77,11 +77,29 @@ the connection UI. See [OpenAI's connection instructions](https://developers.ope
 and [OAuth requirements](https://developers.openai.com/plugins/build/auth).
 
 The connection can list/read essays, comments, history and proposals, propose a
-new essay/revision, and revise a pending proposal. It cannot approve, publish,
+new essay/revision, revise a pending proposal, and stage private images for review. It cannot approve, publish,
 generate audio, manage connections or write directly to database tables. These
 restrictions are enforced by the backend, not by tool descriptions alone.
 **ChatGPT connections → Revoke access** takes effect on the next request,
 including requests carrying an otherwise valid token.
+
+For visuals, call `get_visual_guide` first. `list_images` returns reusable image
+references. `stage_image` accepts actual base64 PNG/JPEG/WebP/GIF/AVIF bytes up to
+2 MB and 25 megapixels, with a unique request ID and alt text. For a new essay,
+create the initial proposal first, stage its images, then revise the proposal.
+Staging is idempotent and leaves the manuscript unchanged; content-addressed
+filenames prevent replacing an image already shown in a reviewed version.
+Uploads are private and scoped to the owner's essay. Only referenced images
+enter an explicitly approved publication. Larger images can be uploaded through
+the Studio (12 MB). The MCP server does not generate images or fetch remote URLs.
+
+Proposals may include `diagram` JSON code blocks and allowlisted `html` code
+blocks. The same server-side renderer creates the Studio preview and public HTML.
+Diagrams become static SVG with a text description; HTML supports figures,
+captions, tables, disclosures and basic formatting. Scripts, CSS, event handlers,
+embeds, forms, SVG/MathML input and external tracking images are removed. See
+[the Markdown examples](../content/essays/README.md). The original source stays
+visible in the proposal diff, including any markup removed from the preview.
 
 Example requests:
 
@@ -259,6 +277,24 @@ Connect ElevenLabs in the authenticated **Audio** panel. Its key is stored in
 preserves existing auditions but does not invent a missing provider key. Narration
 requires an explicit Studio action. Long recordings run one part at a time with
 durable progress, context-aware cached parts, narrator credit and stale detection.
+
+Local `.env` files never deploy automatically. An operator with the existing AWS
+access can copy only the ElevenLabs key and default voice into this Studio secret:
+
+```sh
+python3 ../karteria/scripts/aws-env.py node --env-file-if-exists=.env \
+  --env-file-if-exists=.env.local scripts/configure-audio.mjs --from-env
+```
+
+The command verifies voice-list access and writes no key to logs or Git.
+Reload the online Studio, open **Audio**, and choose **Listen to selected voice**.
+This reads an existing provider sample through the authenticated API and plays a
+temporary browser blob; it never generates speech. The key needs `voices_read`.
+**Generate short preview** reads up to 600 characters of the essay and consumes
+provider credits. **Generate full narration** attaches the complete recording to
+the reader preview; save the draft afterward. Saved previews remain available
+when reopening the essay, and failed jobs display an explicit retry action.
+The integration uses [ElevenLabs' voice API](https://elevenlabs.io/docs/api-reference/voices/search).
 Uploads use signed S3 POSTs with exact size/type/checksum restrictions: images up
 to 12 MB; MP3/M4A/WAV/OGG up to 60 MB. Downloads expire after 15 minutes; refresh
 the preview for new links. Portable Markdown always keeps local asset references.
