@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import { diffLines } from 'diff';
-import { hash, parseEssay, serializeEssay, validateEssay, validSlug, renderArticle } from '../scripts/essays.mjs';
+import { hash, parseEssay, serializeEssay, validateEssay, validateRichContent, validSlug, renderArticle } from '../scripts/essays.mjs';
 import { requireHuman, requireValue, fail, now } from './errors.mjs';
 
 const uuid = z.string().uuid();
@@ -26,6 +26,9 @@ export function manuscript(source) {
     const parsed = parseEssay(source); parsed.metadata.draft = true; validateEssay(parsed);
     return { ...parsed, source: serializeEssay(parsed) };
   } catch (error) { throw fail(error.message); }
+}
+function validateProposal(doc) {
+  try { validateRichContent(doc); } catch (error) { throw fail(error.message); }
 }
 export function documentRecord(slug, source, comments = [], previous = null) {
   const doc = manuscript(source), version = (previous?.version || 0) + 1;
@@ -84,7 +87,8 @@ export class Workspace {
     const stale = (current?.revision ?? null) !== change.baseRevision || (current?.commentsRevision ?? null) !== change.commentsRevision || proposal.version !== change.version;
     const beforeMetadata = change.baseSource ? parseEssay(change.baseSource).metadata : {}, afterMetadata = parseEssay(change.source).metadata;
     const metadataChanges = [...new Set([...Object.keys(beforeMetadata), ...Object.keys(afterMetadata)])].filter(key => !isDeepStrictEqual(beforeMetadata[key], afterMetadata[key])).map(key => ({ field: key, before: beforeMetadata[key] ?? null, after: afterMetadata[key] ?? null }));
-    return { ...proposal, ...change, currentVersion: proposal.version, stale, diff: diff(change.baseSource, change.source), html: renderArticle(parseEssay(change.source), { draft: true }),
+    const previewErrors = [], html = renderArticle(parseEssay(change.source), { draft: true, previewErrors });
+    return { ...proposal, ...change, currentVersion: proposal.version, stale, diff: diff(change.baseSource, change.source), html, previewErrors,
       metadataChanges, resolvedComments: change.baseComments.filter(item => change.resolveCommentIds.includes(item.id)), reviewUrl: `${this.origin}/?proposal=${id}&version=${change.version}` };
   }
   proposal(identity, id, version) { uuid.parse(id); return this.tx(identity, tx => this.proposalView(tx, id, version)); }
@@ -99,6 +103,7 @@ export class Workspace {
         requireValue(proposal.state === 'pending' && proposal.version === input.expectedVersion && proposal.slug === input.slug, 'The proposal changed or is no longer pending.', 409);
       }
       const doc = manuscript(input.source);
+      validateProposal(doc);
       // Proposals can reference staged images; narration remains a human action.
       requireValue(isDeepStrictEqual(doc.metadata.audio ?? null, current?.metadata.audio ?? null), 'Audio attachments can only be changed in the Studio.');
       doc.metadata.status = current?.metadata.status || 'Draft';
@@ -121,6 +126,7 @@ export class Workspace {
       if (accepted) {
         const current = await tx.get('essay', proposal.slug, false);
         requireValue((current?.revision ?? null) === change.baseRevision && (current?.commentsRevision ?? null) === change.commentsRevision, 'The manuscript or comments changed after this proposal. Ask for a refreshed proposal.', 409);
+        validateProposal(parseEssay(change.source));
         const comments = (current?.comments || []).map(item => change.resolveCommentIds.includes(item.id) ? { ...item, resolved: true } : item);
         if (current) document = await this.saveRecord(tx, current, change.source, comments, `Accepted proposal ${id}/${input.version}`);
         else {

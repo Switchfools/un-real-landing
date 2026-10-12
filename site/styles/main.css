@@ -180,6 +180,8 @@ h2 { font-size: clamp(30px, 3.15vw, 44px); font-weight: 400; line-height: 1.22; 
 .essay-snippet details { padding: 16px; border: 1px solid var(--line); }
 .essay-snippet summary { cursor: pointer; color: var(--accent); }
 .essay-snippet figcaption { color: var(--muted); font-size: 14px; }
+.essay-embed-error { margin-block: 24px; padding: 20px; border: 1px solid var(--accent); overflow-wrap: anywhere; }
+.essay-embed-error strong { color: var(--accent); }
 .site-footer > a:not(.footer-brand) { color: var(--muted); font: 11px var(--mono); }
 .essay-header { margin-bottom: 46px; padding-bottom: 32px; border-bottom: 1px solid var(--line); }
 .essay-header .eyebrow { margin-bottom: 22px; }

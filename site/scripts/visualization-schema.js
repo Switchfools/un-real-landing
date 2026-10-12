@@ -11,12 +11,14 @@ export function validateFrame(frame) {
   check(Array.isArray(frame.commands) && frame.commands.length <= limits.commands, 'Use at most 1,200 drawing commands.');
   check(frame.caption === undefined || (typeof frame.caption === 'string' && frame.caption.length <= 1000), 'Keep the visualization caption under 1,000 characters.');
   let points = 0;
-  for (const c of frame.commands) {
+  for (const [index, c] of frame.commands.entries()) {
     check(object(c), 'Invalid drawing command.');
     const fields = { line: ['x1', 'y1', 'x2', 'y2'], rect: ['x', 'y', 'width', 'height'], circle: ['x', 'y', 'r'], path: ['d'], polyline: ['points'], text: ['x', 'y', 'text', 'size', 'align'] }[c.type];
     check(fields, 'Supported drawings: line, rect, circle, path, polyline and text.');
     keys(c, ['type', 'fill', 'stroke', 'lineWidth', 'opacity', ...fields]);
-    check(color(c.fill) && color(c.stroke) && (c.lineWidth === undefined || number(c.lineWidth, 0, 20)) && (c.opacity === undefined || number(c.opacity, 0, 1)), 'Use hex colors, line widths up to 20, and opacity between 0 and 1.');
+    check(color(c.fill) && color(c.stroke), `Drawing command ${index + 1}: use hex colors or transparent.`);
+    check(c.lineWidth === undefined || number(c.lineWidth, 0, 20), `Drawing command ${index + 1}: lineWidth must be between 0 and 20. Use filled shapes for wider areas.`);
+    check(c.opacity === undefined || number(c.opacity, 0, 1), `Drawing command ${index + 1}: opacity must be between 0 and 1.`);
     for (const name of fields.filter(key => !['d', 'points', 'text', 'size', 'align'].includes(key))) check(number(c[name]), 'Drawing coordinates must be finite and bounded.');
     if (c.type === 'circle') check(c.r >= 0 && c.r <= 2000, 'Invalid circle radius.');
     if (c.type === 'rect') check(c.width >= 0 && c.height >= 0, 'Invalid rectangle size.');

@@ -4,7 +4,7 @@ import { newQuickJSWASMModuleFromVariant, newVariant } from 'quickjs-emscripten-
 import variant from '@jitl/quickjs-wasmfile-release-sync';
 import { parseVisualization, validateFrame, visualizationExample, limits } from '../site/scripts/visualization-schema.js';
 import { createVisualizationVM } from '../runtime/visualization-vm.mjs';
-import { renderMarkdown, narrationText } from '../scripts/essays.mjs';
+import { renderMarkdown, renderArticle, validateEssay, narrationText } from '../scripts/essays.mjs';
 
 const engine = await newQuickJSWASMModuleFromVariant(newVariant(variant, { wasmMemory: new WebAssembly.Memory({ initial: 256, maximum: 1024 }) }));
 const input = { width: 640, height: 320, values: { growth: 1 }, pointer: { x: 20, y: 30, down: false }, time: 0, reducedMotion: false };
@@ -60,4 +60,21 @@ test('drawing boundary rejects executable attributes, URLs, oversized paths and 
   ]) assert.throws(() => validateFrame({ commands: [command] }));
   assert.throws(() => validateFrame({ commands: Array.from({ length: 1201 }, () => ({ type: 'circle', x: 0, y: 0, r: 1 })) }));
   assert.throws(() => validateFrame({ commands: Array.from({ length: 4 }, () => ({ type: 'polyline', points: Array.from({ length: 2000 }, () => [0, 0]) })) }));
+});
+
+test('invalid embeds leave drafts reviewable but cannot enter a publication', () => {
+  const bad = { ...visualizationExample, fallback: { commands: [{ type: 'path', d: 'M0 0L40 40', stroke: '#bddad1', lineWidth: 94 }] } };
+  const block = (kind, value) => '```' + kind + '\n' + value + '\n```';
+  const body = 'Before the visual.\n\n' + block('visualization', JSON.stringify(bad)) + '\n\n' + block('diagram', '{}') + '\n\n' + block('html', '<script>attack()</script>' + 'x'.repeat(20001)) + '\n\nAfter the visual.\n\n' + block('visualization', JSON.stringify(visualizationExample));
+  const doc = { metadata: { title: 'Review', description: 'Review visuals.', author: 'Test', date: '2026-10-12', action: 'Fix the diagram.', summary: block('visualization', '{bad JSON}') }, body };
+  const previewErrors = [], html = renderArticle(doc, { draft: true, previewErrors });
+  assert.equal(previewErrors.length, 4);
+  assert.match(previewErrors[0], /block 1.*command 1: lineWidth/);
+  assert.match(previewErrors[3], /the summary/);
+  assert.match(html, /Before the visual/); assert.match(html, /After the visual/);
+  assert.equal((html.match(/class="essay-embed-error"/g) || []).length, 4);
+  assert.equal((html.match(/data-viz-spec/g) || []).length, 1);
+  assert.doesNotMatch(html, /<script|attack\(\)|lineWidth&quot;:94/);
+  assert.throws(() => renderArticle(doc), /lineWidth/);
+  assert.throws(() => validateEssay({ ...doc, metadata: { ...doc.metadata, summary: 'A readable summary.' } }, true), /lineWidth/);
 });

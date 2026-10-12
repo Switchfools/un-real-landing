@@ -47,6 +47,13 @@ export function validateEssay({ metadata, body }, publishing = false) {
     }
     if (publishing && audio.source_hash !== narrationHash({ metadata, body })) throw new Error('Narration is out of date. Regenerate it, attach a current recording, or remove audio before publishing.');
   }
+  if (publishing) validateRichContent({ metadata, body });
+}
+
+export function validateRichContent(doc) {
+  const previewErrors = [];
+  renderArticle(doc, { draft: true, previewErrors });
+  if (previewErrors.length) throw new Error(previewErrors.join('\n'));
 }
 
 function safeUrl(value, image = false) {
@@ -56,8 +63,9 @@ function safeUrl(value, image = false) {
   return escape(url);
 }
 
-export function renderMarkdown(source, prefix = '') {
+export function renderMarkdown(source, prefix = '', { onInvalidEmbed } = {}) {
   const headings = [], ids = new Map(), notes = new Map(), references = new Map();
+  let embedIndex = 0;
   const markdown = new Marked({ gfm: true, async: false });
   markdown.use({
     extensions: [{
@@ -80,9 +88,19 @@ export function renderMarkdown(source, prefix = '') {
     }],
     renderer: {
       code({ text, lang }) {
-        if (lang === 'visualization') return renderVisualization(text);
-        if (lang === 'diagram') return renderDiagram(text);
-        if (lang === 'html') return renderSnippet(text);
+        const render = { visualization: renderVisualization, diagram: renderDiagram, html: renderSnippet }[lang];
+        if (typeof render === 'function' && ['visualization', 'diagram', 'html'].includes(lang)) {
+          embedIndex++;
+          try { return render(text); }
+          catch (error) {
+            const message = `Invalid ${lang} block ${embedIndex} in ${prefix ? 'the summary' : 'the essay body'}: ${error.message}`;
+            if (!onInvalidEmbed) throw new Error(message);
+            onInvalidEmbed(message);
+            // Keep the rest of a private draft reviewable without rendering any
+            // part of the rejected markup, drawing commands or executable code.
+            return `<aside class="essay-embed-error"><strong>Visual unavailable</strong><p>${escape(message)}</p><p>Correct this block before approving or publishing.</p></aside>`;
+          }
+        }
         return `<pre><code>${escape(text)}</code></pre>\n`;
       },
       html({ text }) { return escape(text); },
@@ -131,8 +149,9 @@ export function audioPlayer(audio) {
   </section>`;
 }
 
-export function renderArticle({ metadata, body }, { draft = false } = {}) {
-  const rendered = renderMarkdown(body);
+export function renderArticle({ metadata, body }, { draft = false, previewErrors = [] } = {}) {
+  const options = draft ? { onInvalidEmbed: message => previewErrors.push(message) } : {};
+  const rendered = renderMarkdown(body, '', options);
   const toc = rendered.headings.filter(heading => heading.depth <= 2);
   const minutes = Math.max(1, Math.ceil(wordCount(body) / 220));
   const seconds = Math.max(15, Math.ceil(wordCount(metadata.summary) / 220 * 60 / 5) * 5);
@@ -142,7 +161,7 @@ export function renderArticle({ metadata, body }, { draft = false } = {}) {
     <p class="essay-deck">${escape(metadata.subtitle || metadata.description || '')}</p>
     <p class="essay-byline"><span>${escape(metadata.author || 'Author to be added')}</span><time${/^\d{4}-\d{2}-\d{2}$/.test(metadata.date) ? ` datetime="${escape(metadata.date)}"` : ''}>${displayDate(metadata.date)}</time><span>${minutes} min read</span></p></header>
     <section class="essay-abstract" aria-labelledby="abstract-title"><div class="abstract-label"><h2 id="abstract-title">The idea in brief</h2><span>${seconds < 60 ? `${seconds} sec` : `${Math.ceil(seconds / 60)} min`} read</span></div>
-    <div class="essay-prose" data-comment-field="summary">${renderMarkdown(metadata.summary || '*Start with the conclusion. Give a busy reader the whole idea.*', 'brief-').html}</div>
+    <div class="essay-prose" data-comment-field="summary">${renderMarkdown(metadata.summary || '*Start with the conclusion. Give a busy reader the whole idea.*', 'brief-', options).html}</div>
     <a class="text-link" href="#full-essay">Read the full essay <span aria-hidden="true">↓</span></a></section>
     ${audioPlayer(metadata.audio)}
     <div class="essay-divider" id="full-essay"><span>The full essay</span><span>${minutes} min · Make room for the reasoning</span></div>

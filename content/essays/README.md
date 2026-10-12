@@ -133,6 +133,14 @@ watchdog. Large or invalid drawings stop with a recovery message. At most one
 visualization runs at a time, up to 15 animation frames per second. Review the
 code diff and interactive preview before approving; publish separately.
 
+Studio validates visual definitions and fallback drawings before saving a new
+ChatGPT proposal version. Invalid visuals in older proposals show an explanation
+while their text and diff remain readable. Ask ChatGPT to read `previewErrors`
+with `get_proposal` and correct the pending proposal using `revise_proposal`.
+Approval and publication remain blocked until those errors are fixed. Use filled
+shapes for broad areas instead of strokes wider than 20; the original proposal
+version stays in history.
+
 Highlight text in either the manuscript or reader preview, then choose
 **Comment on selection**. Save to persist notes. Notes record the selected quote
 and nearby context; if a passage changes or becomes ambiguous, the Studio asks

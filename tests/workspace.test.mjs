@@ -9,6 +9,7 @@ import { serializeEssay } from '../scripts/essays.mjs';
 import { Jobs } from '../server/jobs.mjs';
 import { Releases } from '../server/releases.mjs';
 import { createApp } from '../server/app.mjs';
+import { visualizationExample } from '../site/scripts/visualization-schema.js';
 
 const human = { owner: 'github:123', userId: 'owner', clientId: null, permissions: ['read', 'propose'] };
 const ai = { ...human, clientId: 'chatgpt' };
@@ -64,6 +65,45 @@ test('rejecting keeps the manuscript intact and records the author decision', as
   assert.deepEqual(await workspace.get(human, current.slug), current);
   assert.equal((await workspace.proposal(human, change.id)).state, 'rejected');
   await assert.rejects(workspace.propose(ai, { ...proposal(current), source: serializeEssay({ ...doc(), metadata: { ...doc().metadata, audio: { narrator: 'AI', ai_generated: true, tracks: [{ title: 'Fake', src: '../../assets/essays/a-belief/fake.mp3' }] } } }) }), /Audio attachments/);
+});
+
+test('invalid visual proposals are rejected before saving; legacy versions remain reviewable and recoverable', async t => {
+  const { workspace } = await fixture(t);
+  const current = await workspace.create(human, 'a-belief', serializeEssay(doc()));
+  const bad = { ...visualizationExample, fallback: { commands: [{ type: 'path', d: 'M0 0L50 50', stroke: '#bddad1', lineWidth: 94 }] } };
+  const invalid = proposal(current, 'Text around the diagram.\n\n```visualization\n' + JSON.stringify(bad) + '\n```');
+  await assert.rejects(workspace.propose(ai, invalid), error => error.status === 400 && /lineWidth/.test(error.message));
+  assert.deepEqual(await workspace.proposals(human), []);
+  assert.equal((await workspace.tx(human, tx => tx.list('receipt'))).length, 0);
+  // Model a proposal saved by the previous implementation, without mutating its
+  // immutable version after insertion.
+  const id = randomUUID();
+  await workspace.tx(human, async tx => {
+    await tx.insert('proposal', id, { id, slug: current.slug, version: 1, state: 'pending', summary: invalid.summary });
+    await tx.insert('proposal-version', `${id}/1`, { ...invalid, id, version: 1, baseSource: current.source, baseComments: [] });
+  });
+  const config = { origin: 'http://127.0.0.1:4312' };
+  const app = createApp({ config, workspace, authenticate: async () => human, media: { urls: async (_, html) => html } });
+  const response = await app.request(`/api/proposals/${id}`);
+  assert.equal(response.status, 200);
+  const review = await response.json();
+  assert.match(review.previewErrors[0], /lineWidth/);
+  assert.match(review.html, /Text around the diagram/);
+  assert.match(review.html, /Visual unavailable/);
+  assert.equal(review.source, invalid.source);
+  assert.ok(review.diff.some(part => part.kind === 'added' && part.text.includes('94')));
+  const denied = await app.request(`/api/proposals/${id}/approve`, { method: 'POST', headers: { Origin: config.origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: randomUUID(), version: 1 }) });
+  assert.equal(denied.status, 400); assert.match((await denied.json()).error, /lineWidth/);
+  assert.deepEqual(await workspace.get(human, current.slug), current);
+  assert.equal((await workspace.tx(human, tx => tx.list('approval'))).length, 0);
+  await assert.rejects(workspace.propose(ai, { ...invalid, requestId: randomUUID(), proposalId: id, expectedVersion: 1 }, true), /lineWidth/);
+  assert.equal((await workspace.proposal(human, id)).version, 1);
+  const corrected = await workspace.propose(ai, { ...proposal(current), proposalId: id, expectedVersion: 1 }, true);
+  assert.equal(corrected.version, 2);
+  assert.deepEqual((await workspace.proposal(human, id)).previewErrors, []);
+  assert.equal((await workspace.proposal(human, id, 1)).source, invalid.source);
+  await workspace.decide(human, id, { requestId: randomUUID(), version: 2 }, true);
+  assert.equal((await workspace.get(human, current.slug)).published, false);
 });
 
 test('release confirmation freezes a reviewed snapshot; later edits cannot enter it', async t => {
